@@ -1,11 +1,21 @@
 use std::array;
 
 fn main() {
-    println!("LETS GOOO");
+    println!("--------------------------");
 
-    let cube = Cube::new();
+    let mut cube = Cube::new();
 
     cube.print();
+
+    println!("--------------------------");
+    cube.corners[0].orientation = 1;
+    cube.edges[7].orientation = 1;
+    cube.print();
+
+    println!("--------------------------");
+    cube.corners[0].orientation = 2;
+    cube.print();
+    println!("--------------------------");
 }
 
 // for this explanation, move notation will be used to describe the sides of the cube:
@@ -30,6 +40,7 @@ fn main() {
 //      The order will just be:
 //          UF, UR, UB, UL, FR, BR, BL, FL, DF, DR, DB, DL
 
+#[derive(Clone, Copy)]
 struct Piece {
     position: i32,
     orientation: i32,
@@ -57,6 +68,32 @@ fn fill_state(cube: &Cube) -> CubeState {
     state[4][1][1] = 'O';
     state[5][1][1] = 'B';
 
+    for i in 0..3 {
+        // get the lookup table info
+        let sticker_pos: &(Face, u8, u8) = &CORNER_TABLE[0][i];
+
+        // set the color in the state
+        state[sticker_pos.0 as usize][sticker_pos.1 as usize][sticker_pos.2 as usize] =
+            CORNER_COLORS[0]
+                .chars()
+                .nth((i + (cube.corners[0].orientation as usize)) % 3)
+                .expect("No Color Found");
+        // NOTE: the (i + orientation) % 3 makes it so the colors in the piece actually rotate
+    }
+
+    for i in 0..2 {
+        // lookup table info
+        let sticker_pos: &(Face, u8, u8) = &EDGE_TABLE[7][i];
+
+        // set the color in the state
+        state[sticker_pos.0 as usize][sticker_pos.1 as usize][sticker_pos.2 as usize] = EDGE_COLORS
+            [7]
+            .chars()
+            .nth((i + (cube.edges[7].orientation as usize)) % 2)
+            .expect("No Color Found");
+    }
+
+    /*
     // Corners
     for pos in 0..8 {
         // find which piece is in the 'pos' position
@@ -84,18 +121,21 @@ fn fill_state(cube: &Cube) -> CubeState {
     }
 
     // Edges
-
     for pos in 0..12 {
+        // find which piece is in the 'pos' position
         let index = cube
             .edges
             .iter()
             .position(|piece| piece.position == pos)
             .expect("Edge Position #{pos} Empty"); // Panics if no peice is found
 
+        // fill in the sticker on the 2 sides that share the edge
+        //      Uses the 'EDGE_TABLE' lookup table to see where to place them
         for i in 0..2 {
+            // lookup table info
             let sticker_pos: &(Face, u8, u8) = &EDGE_TABLE[pos as usize][i];
 
-
+            // set the color in the state
             state[sticker_pos.0 as usize][sticker_pos.1 as usize][sticker_pos.2 as usize] =
                 EDGE_COLORS[index]
                     .chars()
@@ -103,6 +143,7 @@ fn fill_state(cube: &Cube) -> CubeState {
                     .expect("No Color Found");
         }
     }
+    */
 
     return state;
 }
@@ -150,7 +191,9 @@ fn print_state(state: &CubeState) {
 }
 
 const CORNER_COLORS: [&str; 8] = ["WRG", "WOG", "YOG", "YRG", "WRB", "WOB", "YOB", "YRB"];
-const EDGE_COLORS: [&str; 12] = ["WG", "WR", "WB", "WO", "GR", "BR", "BO", "GO", "YG", "YR", "YB", "YO"];
+const EDGE_COLORS: [&str; 12] = [
+    "WG", "WR", "WB", "WO", "GR", "BR", "BO", "GO", "YG", "YR", "YB", "YO",
+];
 
 #[repr(u8)]
 #[derive(Clone, Copy)]
@@ -191,6 +234,7 @@ const EDGE_TABLE: [[(Face, u8, u8); 2]; 12] = [
     [(Face::D, 1, 0), (Face::L, 2, 1)],
 ];
 
+#[derive(Clone, Copy)]
 struct Cube {
     // 2 arrays of pieces
     corners: [Piece; 8],
