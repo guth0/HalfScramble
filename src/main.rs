@@ -16,7 +16,7 @@ fn main() {
 
     cube.move_f();
     // println!("{:?}", cube.corners);
-    
+
     cube.print();
 
     println!("--------------------------");
@@ -65,12 +65,12 @@ fn fill_state(cube: &Cube) -> CubeState {
     // NOTE: A premade state with the centers already done would be faster
     //       but this function isn't used enough for that to be worth it.
 
-    state[0][1][1] = 'W';
-    state[1][1][1] = 'R';
-    state[2][1][1] = 'G';
-    state[3][1][1] = 'Y';
-    state[4][1][1] = 'O';
-    state[5][1][1] = 'B';
+    state[Face::U as usize][1][1] = 'W';
+    state[Face::R as usize][1][1] = 'R';
+    state[Face::F as usize][1][1] = 'G';
+    state[Face::D as usize][1][1] = 'Y';
+    state[Face::L as usize][1][1] = 'O';
+    state[Face::B as usize][1][1] = 'B';
 
     // Corners
 
@@ -181,10 +181,30 @@ enum Face {
     U,
     R,
     F,
-    D,
     L,
     B,
+    D
 }
+
+const CORNER_MOVE_TABLE: [[u8; 4]; 6] = 
+[
+    [0, 1, 5, 4],
+    [0, 4, 3, 7],
+    [0, 3, 2, 1],
+    [2, 6, 7, 3],
+    [5, 6, 7, 8],
+    [3, 4, 8, 7],
+];
+
+const EDGE_MOVE_TABLE: [[u8; 4]; 6] = 
+[
+    [0, 1, 3, 4],
+    [2, 6, 10, 5],
+    [1, 5, 9, 8],
+    [4, 8, 12, 7],
+    [3, 7, 11, 6],
+    [9, 10, 11, 12],
+];
 
 const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
     // The tuples are (Face, row, column)
@@ -246,51 +266,46 @@ impl Cube {
         let corner_pos_cycle: [u8; 4] = [3, 2, 1, 0];
         let edge_pos_cycle: [u8; 4] = [0, 4, 8, 7];
 
-        let mut corner_cycle: [usize; 4] = [0; 4];
-        for i in 0..4 {
-            corner_cycle[i] = self
-                .corners
-                .iter()
-                .position(|piece| piece.position == corner_pos_cycle[i] as i32)
-                .expect("Corner Positon #{corner_pos_cycle[i]} Empty");
+        // Corners
+        {
+            let corner_cycle = cycle_pieces(&mut self.corners, &corner_pos_cycle);
+
+            for i in 0..4 {
+                self.corners[corner_cycle[i]].orientation =
+                    (self.corners[corner_cycle[i]].orientation + 2 - (i as i32 % 2)) % 3;
+            }
         }
 
-        println!("CORNER_CYCLE: {:?}", corner_cycle);
+        // Edges
+        {
+            let edge_cycle = cycle_pieces(&mut self.edges, &edge_pos_cycle);
 
-        for i in 0..4 {
-            print!("{}", i);
-            println!(
-                "Corner #{} @ {} -> {}",
-                corner_cycle[i],
-                self.corners[corner_cycle[i]].position,
-                corner_pos_cycle[(i + 1) % 4]
-            );
-            self.corners[corner_cycle[i]].position = corner_pos_cycle[(i + 1) % 4] as i32;
-            self.corners[corner_cycle[i]].orientation =
-                (self.corners[corner_cycle[i]].orientation + 2 - (i as i32 % 2)) % 3;
-        }
-
-        let mut edge_cycle: [usize; 4] = [0; 4];
-        for i in 0..4 {
-            edge_cycle[i] = self
-                .edges
-                .iter()
-                .position(|piece| piece.position == edge_pos_cycle[i] as i32)
-                .expect("Edge Positon #{edge_pos_cycle[i]} Empty");
-        }
-
-        println!("EDGE_CYCLE: {:?}", edge_cycle);
-
-        for i in 0..4 {
-            print!("{}", i);
-            println!(
-                "Edge #{} @ {} -> {}",
-                edge_cycle[i],
-                self.edges[edge_cycle[i]].position,
-                edge_pos_cycle[(i + 1) % 4]
-            );
-            self.edges[edge_cycle[i]].position = edge_pos_cycle[(i + 1) % 4] as i32;
-            self.edges[edge_cycle[i]].orientation = (self.edges[edge_cycle[i]].orientation + 1) % 2;
+            for i in 0..4 {
+                self.edges[edge_cycle[i]].orientation =
+                    (self.edges[edge_cycle[i]].orientation + 1) % 2;
+            }
         }
     }
+}
+
+fn cycle_pieces<const N: usize>(pieces: &mut [Piece; N], pos_cycle: &[u8; 4]) -> [usize; 4] {
+    
+    // This will contain which pieces will swap places
+    let mut piece_cycle: [usize; 4] = [0; 4];
+
+    // fill in piece_cycle
+    for i in 0..4 {
+        piece_cycle[i] = pieces
+            .iter()
+            .position(|piece| piece.position == pos_cycle[i] as i32)
+            .expect("Piece Positon #{pos_cycle[i]} Empty");
+    }
+
+    // actually cycle the pieces
+    for i in 0..4 {
+        pieces[piece_cycle[i]].position = pos_cycle[(i + 1) % 4] as i32;
+    }
+
+    // return for orientation changes
+    return piece_cycle;
 }
