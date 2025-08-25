@@ -7,14 +7,16 @@ fn main() {
 
     cube.print();
 
-    println!("{:?}", cube.corners);
-
     println!("--------------------------");
 
+    // cube.corners[0].orientation = 0;
+    // cube.corners[0].position = 3;
+    // cube.corners[3].position = 0;
+    // cube.corners[3].orientation = 0;
+
     cube.move_f();
-
-    println!("{:?}", cube.corners);
-
+    // println!("{:?}", cube.corners);
+    
     cube.print();
 
     println!("--------------------------");
@@ -71,6 +73,7 @@ fn fill_state(cube: &Cube) -> CubeState {
     state[5][1][1] = 'B';
 
     // Corners
+
     for pos in 0..8 {
         // find which piece is in the 'pos' position
         let index = cube
@@ -165,7 +168,9 @@ fn print_state(state: &CubeState) {
     println!();
 }
 
-const CORNER_COLORS: [&str; 8] = ["WRG", "WOG", "YOG", "YRG", "WRB", "WOB", "YOB", "YRB"];
+//          UFR, UFL, DFL, DFR, UBR, UBL, DBL, DBR
+
+const CORNER_COLORS: [&str; 8] = ["WRG", "WGO", "YOG", "YGR", "WRB", "WBO", "YOB", "YBR"];
 const EDGE_COLORS: [&str; 12] = [
     "WG", "WR", "WB", "WO", "GR", "BR", "BO", "GO", "YG", "YR", "YB", "YO",
 ];
@@ -182,16 +187,15 @@ enum Face {
 }
 
 const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
-    // Order is always going to be [(U/D), (R/L), (F/B)]
-    //   The tuple is always (Face, row, column)
+    // The tuples are (Face, row, column)
     [(Face::U, 2, 2), (Face::R, 0, 0), (Face::F, 0, 2)],
-    [(Face::U, 2, 0), (Face::L, 0, 2), (Face::F, 0, 0)],
+    [(Face::U, 2, 0), (Face::F, 0, 0), (Face::L, 0, 2)],
     [(Face::D, 0, 0), (Face::L, 2, 2), (Face::F, 2, 0)],
-    [(Face::D, 0, 2), (Face::R, 2, 0), (Face::F, 2, 2)],
+    [(Face::D, 0, 2), (Face::F, 2, 2), (Face::R, 2, 0)],
     [(Face::U, 0, 2), (Face::R, 0, 2), (Face::B, 0, 0)],
-    [(Face::U, 0, 0), (Face::L, 0, 0), (Face::B, 0, 2)],
+    [(Face::U, 0, 0), (Face::B, 0, 2), (Face::L, 0, 0)],
     [(Face::D, 2, 0), (Face::L, 2, 0), (Face::B, 2, 2)],
-    [(Face::D, 2, 2), (Face::R, 2, 2), (Face::B, 2, 0)],
+    [(Face::D, 2, 2), (Face::B, 2, 0), (Face::R, 2, 2)],
 ];
 
 const EDGE_TABLE: [[(Face, u8, u8); 2]; 12] = [
@@ -263,7 +267,7 @@ impl Cube {
             );
             self.corners[corner_cycle[i]].position = corner_pos_cycle[(i + 1) % 4] as i32;
             self.corners[corner_cycle[i]].orientation =
-                (self.corners[corner_cycle[i]].orientation + 0) % 3;
+                (self.corners[corner_cycle[i]].orientation + 2 - (i as i32 % 2)) % 3;
         }
 
         let mut edge_cycle: [usize; 4] = [0; 4];
