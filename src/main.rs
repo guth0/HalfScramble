@@ -7,14 +7,16 @@ fn main() {
 
     cube.print();
 
-    println!("--------------------------");
-    cube.corners[0].orientation = 1;
-    cube.edges[7].orientation = 1;
-    cube.print();
+    println!("{:?}", cube.corners);
 
     println!("--------------------------");
-    cube.corners[0].orientation = 2;
+
+    cube.move_f();
+
+    println!("{:?}", cube.corners);
+
     cube.print();
+
     println!("--------------------------");
 }
 
@@ -40,7 +42,7 @@ fn main() {
 //      The order will just be:
 //          UF, UR, UB, UL, FR, BR, BL, FL, DF, DR, DB, DL
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct Piece {
     position: i32,
     orientation: i32,
@@ -68,32 +70,6 @@ fn fill_state(cube: &Cube) -> CubeState {
     state[4][1][1] = 'O';
     state[5][1][1] = 'B';
 
-    for i in 0..3 {
-        // get the lookup table info
-        let sticker_pos: &(Face, u8, u8) = &CORNER_TABLE[0][i];
-
-        // set the color in the state
-        state[sticker_pos.0 as usize][sticker_pos.1 as usize][sticker_pos.2 as usize] =
-            CORNER_COLORS[0]
-                .chars()
-                .nth((i + (cube.corners[0].orientation as usize)) % 3)
-                .expect("No Color Found");
-        // NOTE: the (i + orientation) % 3 makes it so the colors in the piece actually rotate
-    }
-
-    for i in 0..2 {
-        // lookup table info
-        let sticker_pos: &(Face, u8, u8) = &EDGE_TABLE[7][i];
-
-        // set the color in the state
-        state[sticker_pos.0 as usize][sticker_pos.1 as usize][sticker_pos.2 as usize] = EDGE_COLORS
-            [7]
-            .chars()
-            .nth((i + (cube.edges[7].orientation as usize)) % 2)
-            .expect("No Color Found");
-    }
-
-    /*
     // Corners
     for pos in 0..8 {
         // find which piece is in the 'pos' position
@@ -143,7 +119,6 @@ fn fill_state(cube: &Cube) -> CubeState {
                     .expect("No Color Found");
         }
     }
-    */
 
     return state;
 }
@@ -260,5 +235,58 @@ impl Cube {
         let state: CubeState = fill_state(&self);
 
         print_state(&state);
+    }
+
+    fn move_f(&mut self) {
+        // These are the cycles of the pieces in a F move
+        let corner_pos_cycle: [u8; 4] = [3, 2, 1, 0];
+        let edge_pos_cycle: [u8; 4] = [0, 4, 8, 7];
+
+        let mut corner_cycle: [usize; 4] = [0; 4];
+        for i in 0..4 {
+            corner_cycle[i] = self
+                .corners
+                .iter()
+                .position(|piece| piece.position == corner_pos_cycle[i] as i32)
+                .expect("Corner Positon #{corner_pos_cycle[i]} Empty");
+        }
+
+        println!("CORNER_CYCLE: {:?}", corner_cycle);
+
+        for i in 0..4 {
+            print!("{}", i);
+            println!(
+                "Corner #{} @ {} -> {}",
+                corner_cycle[i],
+                self.corners[corner_cycle[i]].position,
+                corner_pos_cycle[(i + 1) % 4]
+            );
+            self.corners[corner_cycle[i]].position = corner_pos_cycle[(i + 1) % 4] as i32;
+            self.corners[corner_cycle[i]].orientation =
+                (self.corners[corner_cycle[i]].orientation + 0) % 3;
+        }
+
+        let mut edge_cycle: [usize; 4] = [0; 4];
+        for i in 0..4 {
+            edge_cycle[i] = self
+                .edges
+                .iter()
+                .position(|piece| piece.position == edge_pos_cycle[i] as i32)
+                .expect("Edge Positon #{edge_pos_cycle[i]} Empty");
+        }
+
+        println!("EDGE_CYCLE: {:?}", edge_cycle);
+
+        for i in 0..4 {
+            print!("{}", i);
+            println!(
+                "Edge #{} @ {} -> {}",
+                edge_cycle[i],
+                self.edges[edge_cycle[i]].position,
+                edge_pos_cycle[(i + 1) % 4]
+            );
+            self.edges[edge_cycle[i]].position = edge_pos_cycle[(i + 1) % 4] as i32;
+            self.edges[edge_cycle[i]].orientation = (self.edges[edge_cycle[i]].orientation + 1) % 2;
+        }
     }
 }
