@@ -58,7 +58,6 @@ fn fill_state(cube: &Cube) -> CubeState {
     state[5][1][1] = 'B';
 
     // Corners
-
     for pos in 0..8 {
         // find which piece is in the 'pos' position
         let index = cube
@@ -78,9 +77,30 @@ fn fill_state(cube: &Cube) -> CubeState {
             state[sticker_pos.0 as usize][sticker_pos.1 as usize][sticker_pos.2 as usize] =
                 CORNER_COLORS[index]
                     .chars()
-                    .nth((i + (cube.corners[i].orientation as usize)) % 3)
+                    .nth((i + (cube.corners[index].orientation as usize)) % 3)
                     .expect("No Color Found");
             // NOTE: the (i + orientation) % 3 makes it so the colors in the piece actually rotate
+        }
+    }
+
+    // Edges
+
+    for pos in 0..12 {
+        let index = cube
+            .edges
+            .iter()
+            .position(|piece| piece.position == pos)
+            .expect("Edge Position #{pos} Empty"); // Panics if no peice is found
+
+        for i in 0..2 {
+            let sticker_pos: &(Face, u8, u8) = &EDGE_TABLE[pos as usize][i];
+
+
+            state[sticker_pos.0 as usize][sticker_pos.1 as usize][sticker_pos.2 as usize] =
+                EDGE_COLORS[index]
+                    .chars()
+                    .nth((i + (cube.edges[index].orientation as usize)) % 2)
+                    .expect("No Color Found");
         }
     }
 
@@ -126,11 +146,11 @@ fn print_state(state: &CubeState) {
     print!("\n   ");
     print_chars(state, Face::D, 2);
 
-
     println!();
 }
 
 const CORNER_COLORS: [&str; 8] = ["WRG", "WOG", "YOG", "YRG", "WRB", "WOB", "YOB", "YRB"];
+const EDGE_COLORS: [&str; 12] = ["WG", "WR", "WB", "WO", "GR", "BR", "BO", "GO", "YG", "YR", "YB", "YO"];
 
 #[repr(u8)]
 #[derive(Clone, Copy)]
@@ -147,7 +167,7 @@ const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
     // Order is always going to be [(U/D), (R/L), (F/B)]
     //   The tuple is always (Face, row, column)
     [(Face::U, 2, 2), (Face::R, 0, 0), (Face::F, 0, 2)],
-    [(Face::U, 2, 0), (Face::L, 2, 2), (Face::F, 0, 0)],
+    [(Face::U, 2, 0), (Face::L, 0, 2), (Face::F, 0, 0)],
     [(Face::D, 0, 0), (Face::L, 2, 2), (Face::F, 2, 0)],
     [(Face::D, 0, 2), (Face::R, 2, 0), (Face::F, 2, 2)],
     [(Face::U, 0, 2), (Face::R, 0, 2), (Face::B, 0, 0)],
@@ -159,8 +179,8 @@ const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
 const EDGE_TABLE: [[(Face, u8, u8); 2]; 12] = [
     [(Face::U, 2, 1), (Face::F, 0, 1)],
     [(Face::U, 1, 2), (Face::R, 0, 1)],
-    [(Face::U, 2, 1), (Face::B, 0, 1)],
-    [(Face::U, 0, 1), (Face::L, 0, 1)],
+    [(Face::U, 0, 1), (Face::B, 0, 1)],
+    [(Face::U, 1, 0), (Face::L, 0, 1)],
     [(Face::F, 1, 2), (Face::R, 1, 0)],
     [(Face::B, 1, 0), (Face::R, 1, 2)],
     [(Face::B, 1, 2), (Face::L, 1, 0)],
