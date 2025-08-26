@@ -94,7 +94,7 @@ fn fill_state(cube: &Cube) -> CubeState {
                     .chars()
                     .nth((i + (cube.corners[index].orientation as usize)) % 3)
                     .expect("No Color Found");
-            // NOTE: the (i + orientation) % 3 makes it so the colors in the piece actually rotate
+            // The   (i + orientation) % 3   rotates the colors
         }
     }
 
@@ -121,7 +121,6 @@ fn fill_state(cube: &Cube) -> CubeState {
                     .expect("No Color Found");
         }
     }
-
 
     return state;
 }
@@ -185,6 +184,8 @@ enum Face {
 }
 
 // could combine these into a single table
+// These are the cycles of positions that each move causes
+// These are in the same order as the Face enum
 const CORNER_MOVE_TABLE: [[u8; 4]; 6] = [
     [1, 5, 4, 0],
     [0, 4, 7, 3],
@@ -203,6 +204,7 @@ const EDGE_MOVE_TABLE: [[u8; 4]; 6] = [
     [8, 9, 10, 11],
 ];
 
+// all entries NEED to be in the same direction (Clockwise in this case)
 const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
     // The tuples are (Face, row, column)
     [(Face::U, 2, 2), (Face::R, 0, 0), (Face::F, 0, 2)],
@@ -214,7 +216,6 @@ const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
     [(Face::D, 2, 0), (Face::B, 2, 2), (Face::L, 2, 0)],
     [(Face::D, 2, 2), (Face::R, 2, 2), (Face::B, 2, 0)],
 ];
-
 
 const EDGE_TABLE: [[(Face, u8, u8); 2]; 12] = [
     [(Face::U, 2, 1), (Face::F, 0, 1)],
@@ -290,20 +291,18 @@ impl Cube {
 
             // orient pieces
             for i in 0..4 {
-                // Not all 4 corners are to be rotated the same amount
-                // for a CW rotation, they should be rotated by
-                //  [2, 1, 2, 1], but for CCW, [1, 2, 1, 2]
-                
+
+                // Different moves have differnt rotation profiles
                 let rotation: i32;
-                match face
-                {
+                match face {
                     Face::F | Face::L => rotation = get_rotation(coeff, i),
                     Face::B | Face::R => rotation = get_rotation(-coeff, i),
                     Face::U | Face::D => rotation = 0,
                 }
 
+                // add rotation
                 self.corners[corner_cycle[i]].orientation =
-                    (self.corners[corner_cycle[i]].orientation + rotation)  % 3;
+                    (self.corners[corner_cycle[i]].orientation + rotation) % 3;
             }
         }
 
@@ -312,7 +311,7 @@ impl Cube {
             // cycle pieces
             let edge_cycle = cycle_pieces(&mut self.edges, &edge_pos_cycle);
 
-            // orient pieces (Only changes on F or B move)
+            // orient pieces (Only changes on F or B moves)
 
             if face == Face::F || face == Face::B {
                 for i in 0..4 {
@@ -348,7 +347,10 @@ fn cycle_pieces<const N: usize>(pieces: &mut [Piece; N], pos_cycle: &[u8; 4]) ->
 fn get_rotation(coeff: i32, i: usize) -> i32 {
     if coeff == -1 {
         2 - (i as i32 % 2)
-    } else {
+    } else if coeff == 1 {
         1 + (i as i32 % 2)
+    } else
+    {
+        panic!("Invalid rotation coefficent: {}", coeff);
     }
 }
