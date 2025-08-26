@@ -9,13 +9,12 @@ fn main() {
 
     println!("--------------------------");
 
-    // cube.corners[0].orientation = 0;
-    // cube.corners[0].position = 3;
-    // cube.corners[3].position = 0;
-    // cube.corners[3].orientation = 0;
+    cube.make_move(Face::D, 1);
 
-    cube.move_f();
-    // println!("{:?}", cube.corners);
+    cube.print();
+
+    println!("--------------------------");
+    cube.make_move(Face::F, -1);
 
     cube.print();
 
@@ -123,6 +122,7 @@ fn fill_state(cube: &Cube) -> CubeState {
         }
     }
 
+
     return state;
 }
 
@@ -168,42 +168,39 @@ fn print_state(state: &CubeState) {
     println!();
 }
 
-//          UFR, UFL, DFL, DFR, UBR, UBL, DBL, DBR
-
-const CORNER_COLORS: [&str; 8] = ["WRG", "WGO", "YOG", "YGR", "WRB", "WBO", "YOB", "YBR"];
+const CORNER_COLORS: [&str; 8] = ["WRG", "WGO", "YOG", "YGR", "WBR", "WOB", "YBO", "YRB"];
 const EDGE_COLORS: [&str; 12] = [
     "WG", "WR", "WB", "WO", "GR", "BR", "BO", "GO", "YG", "YR", "YB", "YO",
 ];
 
 #[repr(u8)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum Face {
     U,
     R,
     F,
     L,
     B,
-    D
+    D,
 }
 
-const CORNER_MOVE_TABLE: [[u8; 4]; 6] = 
-[
-    [0, 1, 5, 4],
-    [0, 4, 3, 7],
+// could combine these into a single table
+const CORNER_MOVE_TABLE: [[u8; 4]; 6] = [
+    [1, 5, 4, 0],
+    [0, 4, 7, 3],
     [0, 3, 2, 1],
-    [2, 6, 7, 3],
-    [5, 6, 7, 8],
-    [3, 4, 8, 7],
+    [1, 2, 6, 5],
+    [4, 5, 6, 7],
+    [2, 3, 7, 6],
 ];
 
-const EDGE_MOVE_TABLE: [[u8; 4]; 6] = 
-[
-    [0, 1, 3, 4],
-    [2, 6, 10, 5],
-    [1, 5, 9, 8],
-    [4, 8, 12, 7],
+const EDGE_MOVE_TABLE: [[u8; 4]; 6] = [
+    [3, 2, 1, 0],
+    [1, 5, 9, 4],
+    [0, 4, 8, 7],
     [3, 7, 11, 6],
-    [9, 10, 11, 12],
+    [2, 6, 10, 5],
+    [8, 9, 10, 11],
 ];
 
 const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
@@ -212,11 +209,12 @@ const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
     [(Face::U, 2, 0), (Face::F, 0, 0), (Face::L, 0, 2)],
     [(Face::D, 0, 0), (Face::L, 2, 2), (Face::F, 2, 0)],
     [(Face::D, 0, 2), (Face::F, 2, 2), (Face::R, 2, 0)],
-    [(Face::U, 0, 2), (Face::R, 0, 2), (Face::B, 0, 0)],
-    [(Face::U, 0, 0), (Face::B, 0, 2), (Face::L, 0, 0)],
-    [(Face::D, 2, 0), (Face::L, 2, 0), (Face::B, 2, 2)],
-    [(Face::D, 2, 2), (Face::B, 2, 0), (Face::R, 2, 2)],
+    [(Face::U, 0, 2), (Face::B, 0, 0), (Face::R, 0, 2)],
+    [(Face::U, 0, 0), (Face::L, 0, 0), (Face::B, 0, 2)],
+    [(Face::D, 2, 0), (Face::B, 2, 2), (Face::L, 2, 0)],
+    [(Face::D, 2, 2), (Face::R, 2, 2), (Face::B, 2, 0)],
 ];
+
 
 const EDGE_TABLE: [[(Face, u8, u8); 2]; 12] = [
     [(Face::U, 2, 1), (Face::F, 0, 1)],
@@ -242,7 +240,8 @@ struct Cube {
 
 impl Cube {
     fn new() -> Self {
-        // this creates the object and retuns it
+        // create the pieces and put them in the correct position and orientation
+        //      When solved, the orientations are all 0
         Cube {
             corners: array::from_fn(|i| Piece {
                 position: i as i32,
@@ -261,35 +260,71 @@ impl Cube {
         print_state(&state);
     }
 
-    fn move_f(&mut self) {
-        // These are the cycles of the pieces in a F move
-        let corner_pos_cycle: [u8; 4] = [3, 2, 1, 0];
-        let edge_pos_cycle: [u8; 4] = [0, 4, 8, 7];
+    fn make_move(&mut self, face: Face, coeff: i32) {
+        // Get the cycles from the move tables
+        // if coeff is negative, flip the cycle around
+        let corner_pos_cycle: [u8; 4] = {
+            if coeff == -1 {
+                let mut tmp = CORNER_MOVE_TABLE[face as usize];
+                tmp.reverse();
+                tmp
+            } else {
+                CORNER_MOVE_TABLE[face as usize]
+            }
+        };
+
+        let edge_pos_cycle: [u8; 4] = {
+            if coeff == -1 {
+                let mut tmp = EDGE_MOVE_TABLE[face as usize];
+                tmp.reverse();
+                tmp
+            } else {
+                EDGE_MOVE_TABLE[face as usize]
+            }
+        };
 
         // Corners
         {
+            // cycle pieces
             let corner_cycle = cycle_pieces(&mut self.corners, &corner_pos_cycle);
 
+            // orient pieces
             for i in 0..4 {
+                // Not all 4 corners are to be rotated the same amount
+                // for a CW rotation, they should be rotated by
+                //  [2, 1, 2, 1], but for CCW, [1, 2, 1, 2]
+                
+                let rotation: i32;
+                match face
+                {
+                    Face::F | Face::L => rotation = get_rotation(coeff, i),
+                    Face::B | Face::R => rotation = get_rotation(-coeff, i),
+                    Face::U | Face::D => rotation = 0,
+                }
+
                 self.corners[corner_cycle[i]].orientation =
-                    (self.corners[corner_cycle[i]].orientation + 2 - (i as i32 % 2)) % 3;
+                    (self.corners[corner_cycle[i]].orientation + rotation)  % 3;
             }
         }
 
         // Edges
         {
+            // cycle pieces
             let edge_cycle = cycle_pieces(&mut self.edges, &edge_pos_cycle);
 
-            for i in 0..4 {
-                self.edges[edge_cycle[i]].orientation =
-                    (self.edges[edge_cycle[i]].orientation + 1) % 2;
+            // orient pieces (Only changes on F or B move)
+
+            if face == Face::F || face == Face::B {
+                for i in 0..4 {
+                    self.edges[edge_cycle[i]].orientation =
+                        (self.edges[edge_cycle[i]].orientation + 1) % 2;
+                }
             }
         }
     }
 }
 
 fn cycle_pieces<const N: usize>(pieces: &mut [Piece; N], pos_cycle: &[u8; 4]) -> [usize; 4] {
-    
     // This will contain which pieces will swap places
     let mut piece_cycle: [usize; 4] = [0; 4];
 
@@ -308,4 +343,12 @@ fn cycle_pieces<const N: usize>(pieces: &mut [Piece; N], pos_cycle: &[u8; 4]) ->
 
     // return for orientation changes
     return piece_cycle;
+}
+
+fn get_rotation(coeff: i32, i: usize) -> i32 {
+    if coeff == -1 {
+        2 - (i as i32 % 2)
+    } else {
+        1 + (i as i32 % 2)
+    }
 }
