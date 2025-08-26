@@ -1,7 +1,9 @@
 mod cube;
+mod solver;
 
 use cube::Cube;
 use cube::Face;
+use solver::solve;
 
 fn main() {
     println!("--------------------------");
@@ -10,16 +12,14 @@ fn main() {
 
     cube.print();
 
-    println!("--------------------------");
-
     cube.make_move(Face::D, 1);
-
-    cube.print();
-
-    println!("--------------------------");
     cube.make_move(Face::F, -1);
 
     cube.print();
 
-    println!("--------------------------");
+    match solve(&cube)
+    {
+      Some(path) => println!("PATH: {:?}", path),
+      None => println!("No path found :(")
+    }
 }

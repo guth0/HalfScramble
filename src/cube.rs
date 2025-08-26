@@ -22,7 +22,7 @@ const EDGE_COLORS: [&str; 12] = [
 ];
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Face {
     U,
     R,
@@ -83,8 +83,8 @@ const EDGE_TABLE: [[(Face, u8, u8); 2]; 12] = [
 
 #[derive(Clone, Copy, Debug)]
 pub struct Piece {
-    position: i32,
-    orientation: i32,
+    pub pos: i32,
+    pub ori: i32,
     // Edges will have 12 possible positions and 2 possible orientations  (Total : 2*12=24)
     // Corners will have 8 possible positions and 3 possible orientations (Total : 3*8=24)
 }
@@ -102,12 +102,12 @@ impl Cube {
         //      When solved, the orientations are all 0
         Cube {
             corners: array::from_fn(|i| Piece {
-                position: i as i32,
-                orientation: 0,
+                pos: i as i32,
+                ori: 0,
             }),
             edges: array::from_fn(|i| Piece {
-                position: i as i32,
-                orientation: 0,
+                pos: i as i32,
+                ori: 0,
             }),
         }
     }
@@ -157,8 +157,8 @@ impl Cube {
                 }
 
                 // add rotation
-                self.corners[corner_cycle[i]].orientation =
-                    (self.corners[corner_cycle[i]].orientation + rotation) % 3;
+                self.corners[corner_cycle[i]].ori =
+                    (self.corners[corner_cycle[i]].ori + rotation) % 3;
             }
         }
 
@@ -171,11 +171,31 @@ impl Cube {
 
             if face == Face::F || face == Face::B {
                 for i in 0..4 {
-                    self.edges[edge_cycle[i]].orientation =
-                        (self.edges[edge_cycle[i]].orientation + 1) % 2;
+                    self.edges[edge_cycle[i]].ori = (self.edges[edge_cycle[i]].ori + 1) % 2;
                 }
             }
         }
+    }
+
+    pub fn is_solved(&self) -> bool {
+        // check corners
+        for i in 0..8 {
+            let piece: Piece = self.corners[i];
+            if piece.pos != i as i32 || piece.ori != 0 {
+                return false
+            }
+        }
+
+        // check edges
+        for i in 0..12
+        {
+            let piece: Piece = self.edges[i];
+            if piece.pos != i as i32 || piece.ori != 0 {
+                return false
+            }
+        }
+
+        return true
     }
 }
 
@@ -187,13 +207,13 @@ fn cycle_pieces<const N: usize>(pieces: &mut [Piece; N], pos_cycle: &[u8; 4]) ->
     for i in 0..4 {
         piece_cycle[i] = pieces
             .iter()
-            .position(|piece| piece.position == pos_cycle[i] as i32)
+            .position(|piece| piece.pos == pos_cycle[i] as i32)
             .expect("Piece Positon #{pos_cycle[i]} Empty");
     }
 
     // actually cycle the pieces
     for i in 0..4 {
-        pieces[piece_cycle[i]].position = pos_cycle[(i + 1) % 4] as i32;
+        pieces[piece_cycle[i]].pos = pos_cycle[(i + 1) % 4] as i32;
     }
 
     // return for orientation changes
@@ -235,7 +255,7 @@ fn fill_state(cube: &Cube) -> CubeState {
         let index = cube
             .corners
             .iter()
-            .position(|piece| piece.position == pos)
+            .position(|piece| piece.pos == pos)
             .expect("Corner Position #{pos} Empty"); // Panics if no peice is found
 
         // fill in the sticker on the 3 sides that share the corner
@@ -249,7 +269,7 @@ fn fill_state(cube: &Cube) -> CubeState {
             state[sticker_pos.0 as usize][sticker_pos.1 as usize][sticker_pos.2 as usize] =
                 CORNER_COLORS[index]
                     .chars()
-                    .nth((i + (cube.corners[index].orientation as usize)) % 3)
+                    .nth((i + (cube.corners[index].ori as usize)) % 3)
                     .expect("No Color Found");
             // The   (i + orientation) % 3   rotates the colors
         }
@@ -261,7 +281,7 @@ fn fill_state(cube: &Cube) -> CubeState {
         let index = cube
             .edges
             .iter()
-            .position(|piece| piece.position == pos)
+            .position(|piece| piece.pos == pos)
             .expect("Edge Position #{pos} Empty"); // Panics if no peice is found
 
         // fill in the sticker on the 2 sides that share the edge
@@ -274,7 +294,7 @@ fn fill_state(cube: &Cube) -> CubeState {
             state[sticker_pos.0 as usize][sticker_pos.1 as usize][sticker_pos.2 as usize] =
                 EDGE_COLORS[index]
                     .chars()
-                    .nth((i + (cube.edges[index].orientation as usize)) % 2)
+                    .nth((i + (cube.edges[index].ori as usize)) % 2)
                     .expect("No Color Found");
         }
     }
