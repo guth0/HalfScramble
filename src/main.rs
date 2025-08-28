@@ -12,10 +12,14 @@ fn main() {
 
     cube.print();
 
-    cube.make_move(Face::D, 1);
-    cube.make_move(Face::F, -1);
+    cube.make_move(Face::F, 2);
+
+    cube.make_move(Face::U, 1);
+    cube.make_move(Face::L, 2);
+
 
     cube.print();
+
 
     match solve(&cube)
     {

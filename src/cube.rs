@@ -141,6 +141,16 @@ impl Cube {
             }
         };
 
+        // if double rotation, there are no orientation changes
+        //  so we can just end after these 4 cycles
+        if coeff.abs() == 2 {
+            cycle_pieces(&mut self.corners, &corner_pos_cycle);
+            cycle_pieces(&mut self.corners, &corner_pos_cycle);
+            cycle_pieces(&mut self.edges, &edge_pos_cycle);
+            cycle_pieces(&mut self.edges, &edge_pos_cycle);
+            return;
+        }
+
         // Corners
         {
             // cycle pieces
@@ -182,20 +192,19 @@ impl Cube {
         for i in 0..8 {
             let piece: Piece = self.corners[i];
             if piece.pos != i as i32 || piece.ori != 0 {
-                return false
+                return false;
             }
         }
 
         // check edges
-        for i in 0..12
-        {
+        for i in 0..12 {
             let piece: Piece = self.edges[i];
             if piece.pos != i as i32 || piece.ori != 0 {
-                return false
+                return false;
             }
         }
 
-        return true
+        return true;
     }
 }
 

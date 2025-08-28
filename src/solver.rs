@@ -9,7 +9,7 @@ const INF: i32 = 2 ^ 31;
 #[derive(Debug)]
 pub struct Move {
     face: Face,
-    coeff: u8,
+    coeff: i8,
 }
 
 pub fn solve(cube: &Cube) -> Option<Vec<Move>> {
@@ -46,9 +46,12 @@ fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>) -> i32 {
     // check all moves
     for face in FACES {
         // prevents backtracking and moving twice in the same face
-        if face == path.last().expect("Path is empty").face {
-            continue;
-        };
+        if let Some(mv) = path.last() {
+            if face == mv.face {
+                continue;
+            }
+        }
+
         for coeff in [-1, 1, 2] {
             // do the move
             let mut new_node: Cube = node.clone();
@@ -57,7 +60,7 @@ fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>) -> i32 {
             // add it to the path
             let mv: Move = Move {
                 face: face,
-                coeff: coeff as u8,
+                coeff: coeff as i8,
             };
             path.push(mv);
 
