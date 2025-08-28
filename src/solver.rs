@@ -13,16 +13,18 @@ pub struct Move {
 }
 
 pub fn solve(cube: &Cube) -> Option<Vec<Move>> {
-    let threshold = heuristic(&cube);
+    let mut threshold = heuristic(&cube);
     let mut path: Vec<Move> = Vec::new();
     loop {
         let tmp = search(&cube, 0, threshold, &mut path);
         if tmp == -1 {
             return Some(path);
         }
-        if tmp == INF {
+        if tmp == INF{
             return None;
         }
+        threshold += 1;
+        println!("Threshold = {}", threshold);
     }
 }
 

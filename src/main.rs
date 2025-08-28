@@ -16,6 +16,10 @@ fn main() {
 
     cube.make_move(Face::U, 1);
     cube.make_move(Face::L, 2);
+    cube.make_move(Face::R, 1);
+    cube.make_move(Face::F, -1);
+    cube.make_move(Face::D, 2);
+    cube.make_move(Face::B, 2);
 
 
     cube.print();
