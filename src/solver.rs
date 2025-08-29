@@ -3,14 +3,8 @@ use crate::cube;
 use cube::Cube;
 use cube::Face;
 use cube::Piece;
+use cube::Move;
 
-const INF: i32 = 2 ^ 31;
-
-#[derive(Debug)]
-pub struct Move {
-    pub face: Face,
-    pub coeff: i8,
-}
 
 pub fn solve(cube: &Cube, last_move_inv: Move) -> Option<Vec<Move>> {
     let mut threshold = heuristic(&cube);
@@ -20,7 +14,7 @@ pub fn solve(cube: &Cube, last_move_inv: Move) -> Option<Vec<Move>> {
         if tmp == -1 {
             return Some(path);
         }
-        if tmp == INF {
+        if tmp == i32::MAX{
             return None;
         }
         threshold += 1;
@@ -45,7 +39,7 @@ fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>, last_move_i
         return -1;
     }
 
-    let mut min_cost: i32 = INF;
+    let mut min_cost: i32 = i32::MAX;
 
     // check all moves
     for face in FACES {

@@ -32,6 +32,12 @@ pub enum Face {
     D,
 }
 
+#[derive(Debug)]
+pub struct Move {
+    pub face: Face,
+    pub coeff: i8,
+}
+
 // could combine these into a single table
 // These are the cycles of positions that each move causes
 // These are in the same order as the Face enum
