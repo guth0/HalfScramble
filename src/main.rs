@@ -1,12 +1,20 @@
 mod cube;
 mod solver;
+mod pdb;
 
 use cube::Cube;
 use cube::Face;
+use cube::Move;
 use solver::solve;
-use solver::Move;
+
+use pdb::build_corner_pdb;
 
 fn main() {
+
+
+    let pdb = build_corner_pdb();
+
+    return;
     println!("--------------------------");
 
     let mut cube = Cube::new();
