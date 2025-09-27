@@ -16,3 +16,8 @@
 **/*.rs.sqlite
 **/*.rs.sqlite3
 **/*.rs.db-journal
+
+
+# Added by cargo
+
+/target
