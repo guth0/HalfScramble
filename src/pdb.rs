@@ -35,17 +35,12 @@ fn encode_corners(corners: &[Piece; 8]) -> usize {
     perm_code * (2187) + orient_code // 2187 = 3^7
 }
 
-fn decode_corners(index: usize) -> [Piece; 8] {
-    let mut orient_code = index % 2187;
-    let mut perm_code = index / 2187; // this truncates the orient_code part off
-
-    // Solve for orientations:
-
+fn rev_orientations(mut code: usize) -> [u8; 8] {
     let mut orientations: [u8; 8] = [0; 8];
 
     for i in (0..7).rev() {
-        orientations[i] = (orient_code % 3) as u8;
-        orient_code /= 3;
+        orientations[i] = (code % 3) as u8;
+        code /= 3;
     }
 
     // Solve for the last orientation
@@ -56,39 +51,42 @@ fn decode_corners(index: usize) -> [Piece; 8] {
     let sum: u8 = orientations.iter().copied().sum();
     orientations[7] = (3 - (sum % 3)) % 3;
 
-    // Solve for permutations:
+    orientations
+}
+
+fn rev_lehmer(mut code: usize) -> [u8; 8] {
 
     let mut positions: [u8; 8] = [0; 8];
 
-    // Reverse this:
-    /*
-    let perm: Vec<u8> = corner.iter().map(|c| c.pos as u8).collect();
-    let mut perm_code: usize = 0;
+    // the lehmer number for the 8th piece is always 0
+    for i in (0..7).rev() {
+        let num_smaller = (code % (8 - i)) as u8;
 
-    for i in 0..8 {
-        // counts the number of items smaller and to the right of perm[i]
-        // that is the Lehmer value for that number
-        let num_smaller = perm[(i + 1)..].iter().filter(|&x| *x < perm[i]).count();
-        perm_code = perm_code * (8 - i) + num_smaller;
-    }*/
+        for j in &mut positions[i+1..] {
+            if *j >= num_smaller {
+                *j += 1;
+            }
+        }
 
-    //  0  1  1  0  2  0  0
-    // [0, 2, 3, 1, 7, 5, 6]
+        positions[i] = num_smaller;
 
-    //perm_code = perm_code * (8 - i) + num_smaller;
-    // perm_code2 = permcode1 * (8 - i) + num;
-
-    let mut smaller_arr: [u8; 8] = [0; 8];
-
-    for i in (0..8).rev() {
-        smaller_arr[i] = (perm_code % (8 - i)) as u8;
-        perm_code = perm_code / (8 - i);
+        code = code / (8 - i);
     }
 
+    positions
+}
 
+fn decode_corners(index: usize) -> [Piece; 8] {
+    // split code
+    let orient_code = index % 2187;
+    let perm_code = index / 2187; // this truncates the orient_code part off
+
+    // decode everything
+    let orientations: [u8; 8] = rev_orientations(orient_code);
+    let positions: [u8; 8] = rev_lehmer(perm_code);
 
     // Complete the pieces
-    let mut pieces: [Piece; 8];
+    let mut pieces: [Piece; 8] = [Piece { pos: 0, ori: 0 }; 8];
 
     for i in 0..8 {
         pieces[i].ori = orientations[i] as i32;
