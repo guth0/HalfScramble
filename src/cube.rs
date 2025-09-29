@@ -32,7 +32,7 @@ pub enum Face {
     D,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Move {
     pub face: Face,
     pub coeff: i8,

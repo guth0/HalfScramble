@@ -5,6 +5,7 @@ use cube::Face;
 use cube::Move;
 use cube::Piece;
 
+use rand::Rng;
 use std::collections::VecDeque;
 
 fn encode_corners(corners: &[Piece; 8]) -> usize {
@@ -55,14 +56,13 @@ fn rev_orientations(mut code: usize) -> [u8; 8] {
 }
 
 fn rev_lehmer(mut code: usize) -> [u8; 8] {
-
     let mut positions: [u8; 8] = [0; 8];
 
     // the lehmer number for the 8th piece is always 0
     for i in (0..7).rev() {
         let num_smaller = (code % (8 - i)) as u8;
 
-        for j in &mut positions[i+1..] {
+        for j in &mut positions[i + 1..] {
             if *j >= num_smaller {
                 *j += 1;
             }
@@ -132,6 +132,37 @@ pub fn build_corner_pdb() -> Vec<u8> {
     }
 
     pdb
+}
+
+pub fn test_encode_decode(test_len: i32) -> bool {
+    let mut rng = rand::rng();
+
+    let mut cube: Cube = Cube::new();
+
+    for _ in 0..test_len {
+        let mv = ALL_MOVES[rng.random_range(0..18)];
+        cube.make_move(mv.face, mv.coeff as i32);
+
+        let code = encode_corners(&cube.corners);
+
+        let decoded_corners = decode_corners(code);
+
+        if are_equal_corners(cube.corners, decoded_corners) == false {
+            return false;
+        }
+    }
+
+    true
+}
+
+fn are_equal_corners(c1: [Piece; 8], c2: [Piece; 8]) -> bool {
+    for i in 0..8 {
+        if c1[i].pos != c2[i].pos || c1[i].ori != c2[i].ori {
+            return false;
+        }
+    }
+
+    true
 }
 
 const ALL_MOVES: [Move; 18] = [

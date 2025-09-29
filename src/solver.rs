@@ -2,9 +2,8 @@ use crate::cube;
 
 use cube::Cube;
 use cube::Face;
-use cube::Piece;
 use cube::Move;
-
+use cube::Piece;
 
 pub fn solve(cube: &Cube, last_move_inv: Move) -> Option<Vec<Move>> {
     let mut threshold = heuristic(&cube);
@@ -14,7 +13,7 @@ pub fn solve(cube: &Cube, last_move_inv: Move) -> Option<Vec<Move>> {
         if tmp == -1 {
             return Some(path);
         }
-        if tmp == i32::MAX{
+        if tmp == i32::MAX {
             return None;
         }
         threshold += 1;
@@ -24,7 +23,7 @@ pub fn solve(cube: &Cube, last_move_inv: Move) -> Option<Vec<Move>> {
 
 const FACES: [Face; 6] = [Face::U, Face::R, Face::F, Face::L, Face::B, Face::D];
 
-const OPPOSITE_FACES: [Face; 6] = [Face::D, Face::L, Face::B, Face::R, Face::F, Face::U]; 
+const OPPOSITE_FACES: [Face; 6] = [Face::D, Face::L, Face::B, Face::R, Face::F, Face::U];
 
 fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>, last_move_inv: &Move) -> i32 {
     let f = g + heuristic(&node);
