@@ -2,23 +2,24 @@ mod cube;
 mod pdb;
 mod solver;
 
+use std::fs::File;
+use std::io::Read;
+
 use cube::Cube;
 use cube::Face;
 use cube::Move;
 use solver::solve;
 
-use pdb::build_corner_pdb;
-use pdb::test_encode_decode;
-
 fn main() {
-    let result = test_encode_decode(1000000);
 
-    println!("Final result: {}", result);
+    let pdb_path = "data/corner_pdb.bin";
+    let mut f = File::open(pdb_path).expect("Error: No PDB file found, please run ");
 
-    //let pdb = build_corner_pdb();
+    let mut pdb = Vec::new();
 
-    return;
-    println!("--------------------------");
+    f.read_to_end(&mut pdb)?;
+
+    println!("Loaded PDB from {}", path);
 
     let mut cube = Cube::new();
 

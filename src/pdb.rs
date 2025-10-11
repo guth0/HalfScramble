@@ -36,6 +36,8 @@ fn encode_corners(corners: &[Piece; 8]) -> usize {
     perm_code * (2187) + orient_code // 2187 = 3^7
 }
 
+
+// decode the orientaions from the code
 fn rev_orientations(mut code: usize) -> [u8; 8] {
     let mut orientations: [u8; 8] = [0; 8];
 
@@ -55,6 +57,7 @@ fn rev_orientations(mut code: usize) -> [u8; 8] {
     orientations
 }
 
+// decode the positions from the code
 fn rev_lehmer(mut code: usize) -> [u8; 8] {
     let mut positions: [u8; 8] = [0; 8];
 
@@ -122,9 +125,6 @@ pub fn build_corner_pdb() -> Vec<u8> {
 
             // if index is untouched, change it and add the node to the queue
             if pdb[index] == u8::MAX {
-                if depth == 6 {
-                    return vec![1];
-                };
                 pdb[index] = depth + 1;
                 queue.push_back(new_node);
             }
