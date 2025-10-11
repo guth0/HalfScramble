@@ -25,6 +25,14 @@ const FACES: [Face; 6] = [Face::U, Face::R, Face::F, Face::L, Face::B, Face::D];
 
 const OPPOSITE_FACES: [Face; 6] = [Face::D, Face::L, Face::B, Face::R, Face::F, Face::U];
 
+fn invert_move(mv: Move) -> Move
+{
+    Move {
+        face: mv.face,
+        coeff: if mv.coeff == 2 {2} else {-mv.coeff}
+    }
+}
+
 fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>, last_move_inv: &Move) -> i32 {
     let f = g + heuristic(&node);
 
@@ -75,7 +83,7 @@ fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>, last_move_i
             if tmp < min_cost {
                 min_cost = tmp;
             }
-
+ 
             path.pop();
         }
     }

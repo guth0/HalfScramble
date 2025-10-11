@@ -13,23 +13,22 @@ use solver::solve;
 fn main() {
 
     let pdb_path = "data/corner_pdb.bin";
-    let mut f = File::open(pdb_path).expect("Error: No PDB file found, please run ");
+    let mut f = File::open(pdb_path).expect("Error: No PDB file found, please run `cargo run --release --bin build_pdb`");
 
     let mut pdb = Vec::new();
 
-    f.read_to_end(&mut pdb)?;
+    f.read_to_end(&mut pdb).expect("Unable to load PDB");
 
-    println!("Loaded PDB from {}", path);
+    println!("Loaded PDB from {}", pdb_path);
 
     let mut cube = Cube::new();
 
     cube.print();
 
-    cube.make_move(Face::F, 2);
-
-    cube.make_move(Face::U, 1);
-    cube.make_move(Face::L, 2);
-    cube.make_move(Face::B, 2);
+    cube.make_move(Move {face: Face::F, coeff: 2});
+    cube.make_move(Move {face: Face::U, coeff: 1});
+    cube.make_move(Move {face: Face::L, coeff: 2});
+    cube.make_move(Move {face: Face::B, coeff: 2});
 
     cube.print();
 

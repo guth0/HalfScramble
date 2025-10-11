@@ -124,32 +124,32 @@ impl Cube {
         print_state(&state);
     }
 
-    pub fn make_move(&mut self, face: Face, coeff: i32) {
+    pub fn make_move(&mut self, mv: Move) {
         // Get the cycles from the move tables
         // if coeff is negative, flip the cycle around
         let corner_pos_cycle: [u8; 4] = {
-            if coeff == -1 {
-                let mut tmp = CORNER_MOVE_TABLE[face as usize];
+            if mv.coeff == -1 {
+                let mut tmp = CORNER_MOVE_TABLE[mv.face as usize];
                 tmp.reverse();
                 tmp
             } else {
-                CORNER_MOVE_TABLE[face as usize]
+                CORNER_MOVE_TABLE[mv.face as usize]
             }
         };
 
         let edge_pos_cycle: [u8; 4] = {
-            if coeff == -1 {
-                let mut tmp = EDGE_MOVE_TABLE[face as usize];
+            if mv.coeff == -1 {
+                let mut tmp = EDGE_MOVE_TABLE[mv.face as usize];
                 tmp.reverse();
                 tmp
             } else {
-                EDGE_MOVE_TABLE[face as usize]
+                EDGE_MOVE_TABLE[mv.face as usize]
             }
         };
 
         // if double rotation, there are no orientation changes
         //  so we can just end after these 4 cycles
-        if coeff.abs() == 2 {
+        if mv.coeff.abs() == 2 {
             cycle_pieces(&mut self.corners, &corner_pos_cycle);
             cycle_pieces(&mut self.corners, &corner_pos_cycle);
             cycle_pieces(&mut self.edges, &edge_pos_cycle);
@@ -166,9 +166,9 @@ impl Cube {
             for i in 0..4 {
                 // Different moves have differnt rotation profiles
                 let rotation: i32;
-                match face {
-                    Face::F | Face::L => rotation = get_rotation(coeff, i),
-                    Face::B | Face::R => rotation = get_rotation(-coeff, i),
+                match mv.face {
+                    Face::F | Face::L => rotation = get_rotation(mv.coeff, i),
+                    Face::B | Face::R => rotation = get_rotation(-mv.coeff, i),
                     Face::U | Face::D => rotation = 0,
                 }
 
@@ -185,7 +185,7 @@ impl Cube {
 
             // orient pieces (Only changes on F or B moves)
 
-            if face == Face::F || face == Face::B {
+            if mv.face == Face::F || mv.face == Face::B {
                 for i in 0..4 {
                     self.edges[edge_cycle[i]].ori = (self.edges[edge_cycle[i]].ori + 1) % 2;
                 }
@@ -235,7 +235,7 @@ fn cycle_pieces<const N: usize>(pieces: &mut [Piece; N], pos_cycle: &[u8; 4]) ->
     return piece_cycle;
 }
 
-fn get_rotation(coeff: i32, i: usize) -> i32 {
+fn get_rotation(coeff: i8, i: usize) -> i32 {
     if coeff == -1 {
         2 - (i as i32 % 2)
     } else if coeff == 1 {
