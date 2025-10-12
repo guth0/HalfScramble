@@ -1,23 +1,12 @@
-mod cube;
-mod pdb;
-mod solver;
-
-use std::fs::File;
-use std::io::Read;
-
-use cube::Cube;
-use cube::Face;
-use cube::Move;
-use solver::solve;
+use HalfScramble::cube::{Cube, Face, Move};
+use HalfScramble::solver::solve;
+use HalfScramble::pdb::load_pdb;
 
 fn main() {
 
     let pdb_path = "data/corner_pdb.bin";
-    let mut f = File::open(pdb_path).expect("Error: No PDB file found, please run `cargo run --release --bin build_pdb`");
 
-    let mut pdb = Vec::new();
-
-    f.read_to_end(&mut pdb).expect("Unable to load PDB");
+    let pdb = load_pdb(pdb_path).expect("Error: Could not load PDB, please verify the pdb is at 'data/corner_pdb.bin' or rebuild it with `cargo run --release --bin build_pdb`");
 
     println!("Loaded PDB from {}", pdb_path);
 
@@ -38,7 +27,7 @@ fn main() {
         coeff: 2,
     };
 
-    match solve(&cube, last_move_inv) {
+    match solve(&cube, last_move_inv, &pdb) {
         Some(path) => println!("PATH: {:?}", path),
         None => println!("No path found :("),
     }

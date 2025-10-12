@@ -1,14 +1,13 @@
-use crate::cube;
-
-use cube::Cube;
-use cube::Face;
-use cube::Move;
-use cube::Piece;
+use crate::cube::{Cube, Face, Move, Piece};
 
 use rand::Rng;
 use std::collections::VecDeque;
 
-fn encode_corners(corners: &[Piece; 8]) -> usize {
+use std::fs::File;
+use std::io::{self, Read};
+use std::path::Path;
+
+pub fn encode_corners(corners: &[Piece; 8]) -> usize {
     // Each state has 8 pieces
     //   Each piece has 3 orientations
     //       Final orientation is implied
@@ -120,7 +119,7 @@ pub fn build_corner_pdb() -> Vec<u8> {
         // create all child nodes
         for mv in ALL_MOVES {
             let mut new_node = node.clone();
-            new_node.make_move(mv.face, mv.coeff as i32);
+            new_node.make_move(mv);
             let index = encode_corners(&new_node.corners);
 
             // if index is untouched, change it and add the node to the queue
@@ -141,7 +140,7 @@ pub fn test_encode_decode(test_len: i32) -> bool {
 
     for _ in 0..test_len {
         let mv = ALL_MOVES[rng.random_range(0..18)];
-        cube.make_move(mv.face, mv.coeff as i32);
+        cube.make_move(mv);
 
         let code = encode_corners(&cube.corners);
 
@@ -163,6 +162,19 @@ fn are_equal_corners(c1: [Piece; 8], c2: [Piece; 8]) -> bool {
     }
 
     true
+}
+
+const CORNER_PDB_SIZE: usize = 8*7*6*5*4*3*2*1 * 3_usize.pow(7);
+
+pub fn load_pdb<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>>
+{
+    let mut f = File::open(path)?;
+
+    let mut pdb = vec![0u8; CORNER_PDB_SIZE];
+
+    f.read_exact(&mut pdb)?;
+
+    Ok(pdb)
 }
 
 const ALL_MOVES: [Move; 18] = [

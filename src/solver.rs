@@ -1,15 +1,12 @@
-use crate::cube;
+use crate::pdb::encode_corners;
 
-use cube::Cube;
-use cube::Face;
-use cube::Move;
-use cube::Piece;
+use crate::cube::{Cube, Face, Move};
 
-pub fn solve(cube: &Cube, last_move_inv: Move) -> Option<Vec<Move>> {
-    let mut threshold = heuristic(&cube);
+pub fn solve(cube: &Cube, last_move_inv: Move, pdb: &[u8]) -> Option<Vec<Move>> {
+    let mut threshold = heuristic(&cube, pdb);
     let mut path: Vec<Move> = Vec::new();
     loop {
-        let tmp = search(&cube, 0, threshold, &mut path, &last_move_inv);
+        let tmp = search(&cube, 0, threshold, &mut path, &last_move_inv, pdb);
         if tmp == -1 {
             return Some(path);
         }
@@ -25,16 +22,15 @@ const FACES: [Face; 6] = [Face::U, Face::R, Face::F, Face::L, Face::B, Face::D];
 
 const OPPOSITE_FACES: [Face; 6] = [Face::D, Face::L, Face::B, Face::R, Face::F, Face::U];
 
-fn invert_move(mv: Move) -> Move
-{
-    Move {
-        face: mv.face,
-        coeff: if mv.coeff == 2 {2} else {-mv.coeff}
-    }
-}
-
-fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>, last_move_inv: &Move) -> i32 {
-    let f = g + heuristic(&node);
+fn search(
+    node: &Cube,
+    g: i32,
+    threshold: i32,
+    path: &mut Vec<Move>,
+    last_move_inv: &Move,
+    pdb: &[u8],
+) -> i32 {
+    let f = g + heuristic(&node, pdb);
 
     // Prune nodes with f-scores that are too high
     if f > threshold {
@@ -63,18 +59,19 @@ fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>, last_move_i
                 continue;
             }
 
-            // do the move
-            let mut new_node: Cube = node.clone();
-            new_node.make_move(face, coeff as i32);
-
-            // add it to the path
             let mv: Move = Move {
                 face: face,
                 coeff: coeff as i8,
             };
+
+            // do the move
+            let mut new_node: Cube = node.clone();
+            new_node.make_move(mv);
+
+            // add it to the path
             path.push(mv);
 
-            let tmp = search(&new_node, g + 1, threshold, path, &last_move_inv);
+            let tmp = search(&new_node, g + 1, threshold, path, &last_move_inv, pdb);
 
             if tmp == -1 {
                 return -1;
@@ -83,7 +80,7 @@ fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>, last_move_i
             if tmp < min_cost {
                 min_cost = tmp;
             }
- 
+
             path.pop();
         }
     }
@@ -91,7 +88,12 @@ fn search(node: &Cube, g: i32, threshold: i32, path: &mut Vec<Move>, last_move_i
     return min_cost;
 }
 
+fn heuristic(cube: &Cube, pdb: &[u8]) -> i32 {
+    pdb[encode_corners(&cube.corners)] as i32
+}
+
 // very basic heuristic
+/*
 fn heuristic(cube: &Cube) -> i32 {
     let mut misplaced: i32 = 0;
     // count misplaced corners
@@ -110,3 +112,4 @@ fn heuristic(cube: &Cube) -> i32 {
 
     misplaced / 4
 }
+*/
