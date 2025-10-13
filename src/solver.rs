@@ -14,13 +14,12 @@ pub fn solve(cube: &Cube, last_move_inv: Move, pdb: &[u8]) -> Option<Vec<Move>> 
             return None;
         }
         threshold += 1;
-        println!("Threshold = {}", threshold);
     }
 }
 
 const FACES: [Face; 6] = [Face::U, Face::R, Face::F, Face::L, Face::B, Face::D];
 
-const OPPOSITE_FACES: [Face; 6] = [Face::D, Face::L, Face::B, Face::R, Face::F, Face::U];
+pub const OPPOSITE_FACES: [Face; 6] = [Face::D, Face::L, Face::B, Face::R, Face::F, Face::U];
 
 fn search(
     node: &Cube,

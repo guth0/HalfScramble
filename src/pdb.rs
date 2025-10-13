@@ -177,7 +177,7 @@ pub fn load_pdb<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>>
     Ok(pdb)
 }
 
-const ALL_MOVES: [Move; 18] = [
+pub const ALL_MOVES: [Move; 18] = [
     Move {
         face: Face::U,
         coeff: -1,
