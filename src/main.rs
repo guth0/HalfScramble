@@ -14,7 +14,7 @@ fn main() {
                            
     let mut cube = Cube::new();
 
-    let scramble_len = 5;
+    let scramble_len = 7;
     let scramble = generate_scramble(scramble_len);
 
     // This is to prevent the solution from being the inverse of the scramble
@@ -25,8 +25,7 @@ fn main() {
         cube.make_move(*mv);
     }
 
-
-    let path = solve(&cube, last_move_inv, &pdb).expect("No path found :(");
+    let path = solve(&cube, last_move_inv, &pdb, scramble_len).expect("No path found :(");
 
     let long_scramble = invert_path(&path);
     let solution = invert_path(&scramble);

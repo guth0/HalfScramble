@@ -1,19 +1,31 @@
 use crate::pdb::encode_corners;
 
-use crate::cube::{Cube, Face, Move};
+use crate::cube::{Cube, Face, Piece, Move};
 
-pub fn solve(cube: &Cube, last_move_inv: Move, pdb: &[u8]) -> Option<Vec<Move>> {
-    let mut threshold = heuristic(&cube, pdb);
+pub fn solve(cube: &Cube, last_move_inv: Move, pdb: &[u8], scramble_len: i32) -> Option<Vec<Move>> {
+    let mut threshold = heuristic(cube, pdb).max(scramble_len);
+
+    println!("Heuristic = {}", heuristic(&cube, pdb));
+
     let mut path: Vec<Move> = Vec::new();
     loop {
-        let tmp = search(&cube, 0, threshold, &mut path, &last_move_inv, pdb);
-        if tmp == -1 {
+        let t = search(
+            &cube,
+            0,
+            threshold,
+            &mut path,
+            &last_move_inv,
+            pdb,
+            scramble_len,
+        );
+        if t == -1 {
             return Some(path);
         }
-        if tmp == i32::MAX {
+        if t == i32::MAX {
             return None;
         }
-        threshold += 1;
+        threshold = t;
+        println!("Threshold: {}", threshold);
     }
 }
 
@@ -28,72 +40,86 @@ fn search(
     path: &mut Vec<Move>,
     last_move_inv: &Move,
     pdb: &[u8],
+    scramble_len: i32,
 ) -> i32 {
-    let f = g + heuristic(&node, pdb);
+    let h = heuristic(&node, pdb);
 
-    // Prune nodes with f-scores that are too high
+    // Total estimated cost (guaranteed not be less than scramble length)
+    let f = (g + h).max(scramble_len);
+
+    // If the estimate exceeds the threshold then prune
     if f > threshold {
         return f;
     }
 
-    // If solved, return to the top
+    // If solved, return to top
     if node.is_solved() {
         return -1;
     }
 
     let mut min_cost: i32 = i32::MAX;
 
-    // check all moves
-    for face in FACES {
-        // prevents backtracking and moving twice in the same face
-        if let Some(mv) = path.last() {
-            if face == mv.face || face == OPPOSITE_FACES[mv.face as usize] {
+    // Check all moves
+    for &face in FACES.iter() {
+        // Prevent redundant moves
+        if let Some(prev) = path.last() {
+            if face == prev.face || face == OPPOSITE_FACES[prev.face as usize] {
                 continue;
             }
         }
 
+        // Iterate over coefficients (-1 = CW, 1 = CCW, 2 = Double Turn)
         for coeff in [-1, 1, 2] {
-            // This prevents the solution from being the inverse of the inverse of the scrable
-            if path.len() == 0 && face == last_move_inv.face && coeff == last_move_inv.coeff {
+            // Prevent first move being inverse of scramble
+            if path.is_empty() && face == last_move_inv.face && coeff == last_move_inv.coeff {
                 continue;
             }
 
-            let mv: Move = Move {
-                face: face,
-                coeff: coeff as i8,
-            };
+            let mv = Move { face, coeff };
 
-            // do the move
-            let mut new_node: Cube = node.clone();
+            // Apply move
+            let mut new_node = node.clone();
             new_node.make_move(mv);
 
-            // add it to the path
+            // Push to path
             path.push(mv);
 
-            let tmp = search(&new_node, g + 1, threshold, path, &last_move_inv, pdb);
+            // Recursive search
+            let t = search(
+                &new_node,
+                g + 1,
+                threshold,
+                path,
+                last_move_inv,
+                pdb,
+                scramble_len,
+            );
 
-            if tmp == -1 {
+            // If found, go to top
+            if t == -1 {
                 return -1;
             }
 
-            if tmp < min_cost {
-                min_cost = tmp;
+            // Track minimum cutoff cost
+            if t < min_cost {
+                min_cost = t;
             }
 
+            // Backtrack
             path.pop();
         }
     }
 
-    return min_cost;
+    min_cost
 }
 
 fn heuristic(cube: &Cube, pdb: &[u8]) -> i32 {
-    pdb[encode_corners(&cube.corners)] as i32
+    (pdb[encode_corners(&cube.corners)] as i32).max(computational_heuristic(cube))
 }
 
 // very basic heuristic
-/*
-fn heuristic(cube: &Cube) -> i32 {
+
+fn computational_heuristic(cube: &Cube) -> i32 {
     let mut misplaced: i32 = 0;
     // count misplaced corners
     for i in 0..8 {
@@ -111,4 +137,4 @@ fn heuristic(cube: &Cube) -> i32 {
 
     misplaced / 4
 }
-*/
+
