@@ -1,112 +1,43 @@
 use crate::cube::{Cube, Face, Move, Piece};
 
-use rand::Rng;
 use std::collections::VecDeque;
 
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
-pub fn encode_corners(corners: &[Piece; 8]) -> usize {
-    // Each state has 8 pieces
-    //   Each piece has 3 orientations
-    //       Final orientation is implied
-    //   8! total positions
+pub fn load_pdb<P: AsRef<Path>>(
+    path: P,
+    orientation_base: i32,
+    num_pieces: usize,
+) -> io::Result<Vec<u8>> {
+    let mut f = File::open(path)?;
 
-    let mut orient_code: usize = 0;
+    let mut pdb = vec![
+        0u8;
+        factorial_recursive(num_pieces)
+            * orientation_base.pow((num_pieces - 1) as u32) as usize
+    ];
 
-    // Ignore the last orientation since last one is implied
-    for i in 0..7 {
-        // use base 3 since each piece has 3 orientatinos
-        orient_code = (orient_code * 3) + corners[i].ori as usize;
-    }
+    f.read_exact(&mut pdb)?;
 
-    // Lehmer Code
-    let perm: Vec<u8> = corners.iter().map(|c| c.pos as u8).collect();
-    let mut perm_code: usize = 0;
-
-    for i in 0..8 {
-        // counts the number of items smaller and to the right of perm[i]
-        // that is the Lehmer value for that number
-        let num_smaller = perm[(i + 1)..].iter().filter(|&x| *x < perm[i]).count();
-        perm_code = perm_code * (8 - i) + num_smaller;
-    }
-
-    perm_code * (2187) + orient_code // 2187 = 3^7
+    Ok(pdb)
 }
 
+pub fn build_pdb(
+    piece_range: std::ops::Range<usize>,
+    selector: fn(&Cube) -> &[Piece],
+    orientation_base: usize,
+) -> Vec<u8> {
+    let num_pieces = piece_range.end - piece_range.start;
 
-// decode the orientaions from the code
-fn rev_orientations(mut code: usize) -> [u8; 8] {
-    let mut orientations: [u8; 8] = [0; 8];
-
-    for i in (0..7).rev() {
-        orientations[i] = (code % 3) as u8;
-        code /= 3;
-    }
-
-    // Solve for the last orientation
-    // For any valid position, the following equality is true
-    //      0 = orientation_sum % 3
-    //  Where orientation_sum is the sum of the orientations of the pieces
-
-    let sum: u8 = orientations.iter().copied().sum();
-    orientations[7] = (3 - (sum % 3)) % 3;
-
-    orientations
-}
-
-// decode the positions from the code
-fn rev_lehmer(mut code: usize) -> [u8; 8] {
-    let mut positions: [u8; 8] = [0; 8];
-
-    // the lehmer number for the 8th piece is always 0
-    for i in (0..7).rev() {
-        let num_smaller = (code % (8 - i)) as u8;
-
-        for j in &mut positions[i + 1..] {
-            if *j >= num_smaller {
-                *j += 1;
-            }
-        }
-
-        positions[i] = num_smaller;
-
-        code = code / (8 - i);
-    }
-
-    positions
-}
-
-fn decode_corners(index: usize) -> [Piece; 8] {
-    // split code
-    let orient_code = index % 2187;
-    let perm_code = index / 2187; // this truncates the orient_code part off
-
-    // decode everything
-    let orientations: [u8; 8] = rev_orientations(orient_code);
-    let positions: [u8; 8] = rev_lehmer(perm_code);
-
-    // Complete the pieces
-    let mut pieces: [Piece; 8] = [Piece { pos: 0, ori: 0 }; 8];
-
-    for i in 0..8 {
-        pieces[i].ori = orientations[i] as i32;
-        pieces[i].pos = positions[i] as i32;
-    }
-
-    pieces
-}
-
-// this shit will take like 10 hours to run...
-pub fn build_corner_pdb() -> Vec<u8> {
-    let size = 40320 * 2187; // 8! * 3^7
+    let size = factorial_recursive(num_pieces) * orientation_base.pow(7);
 
     // set default to max to more easily identify missed indices
     let mut pdb = vec![u8::MAX; size];
 
     let solved = Cube::new();
-    let start_index = encode_corners(&solved.corners);
+    let start_index = encode_pieces(selector(&solved), orientation_base, piece_range.clone());
     pdb[start_index] = 0;
 
     let mut queue = VecDeque::new();
@@ -114,13 +45,13 @@ pub fn build_corner_pdb() -> Vec<u8> {
 
     while let Some(node) = queue.pop_front() {
         // get depth
-        let depth = pdb[encode_corners(&node.corners)];
+        let depth = pdb[encode_pieces(selector(&node), orientation_base, piece_range.clone())];
 
         // create all child nodes
         for mv in ALL_MOVES {
             let mut new_node = node.clone();
             new_node.make_move(mv);
-            let index = encode_corners(&new_node.corners);
+            let index = encode_pieces(selector(&new_node), orientation_base, piece_range.clone());
 
             // if index is untouched, change it and add the node to the queue
             if pdb[index] == u8::MAX {
@@ -133,48 +64,84 @@ pub fn build_corner_pdb() -> Vec<u8> {
     pdb
 }
 
-pub fn test_encode_decode(test_len: i32) -> bool {
-    let mut rng = rand::rng();
+fn encode_pieces(
+    pieces: &[Piece],
+    orientation_base: usize,
+    range: std::ops::Range<usize>,
+) -> usize {
+    let mut orient_code: usize = 0;
 
-    let mut cube: Cube = Cube::new();
-
-    for _ in 0..test_len {
-        let mv = ALL_MOVES[rng.random_range(0..18)];
-        cube.make_move(mv);
-
-        let code = encode_corners(&cube.corners);
-
-        let decoded_corners = decode_corners(code);
-
-        if are_equal_corners(cube.corners, decoded_corners) == false {
-            return false;
-        }
+    // The (range.end - 1) ignores the last orientation since it is implied
+    for i in (range.start)..(range.end - 1) {
+        // use base 2 since each piece has 2 orientatinos
+        orient_code = (orient_code * orientation_base) + pieces[i].ori as usize;
     }
 
-    true
-}
+    // Lehmer Code
+    let num_pieces = range.end - range.start;
+    let perm: Vec<u8> = pieces[range].iter().map(|c| c.pos as u8).collect();
+    let mut perm_code: usize = 0;
 
-fn are_equal_corners(c1: [Piece; 8], c2: [Piece; 8]) -> bool {
-    for i in 0..8 {
-        if c1[i].pos != c2[i].pos || c1[i].ori != c2[i].ori {
-            return false;
-        }
+    for i in 0..num_pieces {
+        // counts the number of items smaller and to the right of perm[i]
+        // that is the Lehmer value for that number
+        let num_smaller = perm[(i + 1)..].iter().filter(|&x| *x < perm[i]).count();
+        perm_code = perm_code * (num_pieces - i) + num_smaller;
     }
 
-    true
+    perm_code * orientation_base.pow(7) + orient_code
 }
 
-const CORNER_PDB_SIZE: usize = 8*7*6*5*4*3*2*1 * 3_usize.pow(7);
+pub struct PDB<'a> {
+    data: &'a [u8],
+    range: std::ops::Range<usize>,
+    selector: fn(&Cube) -> &[Piece],
+    orientation_base: usize,
+}
 
-pub fn load_pdb<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>>
-{
-    let mut f = File::open(path)?;
+impl<'a> PDB<'a> {
+    pub fn get_heuristic(&self, cube: &Cube) -> i32 {
 
-    let mut pdb = vec![0u8; CORNER_PDB_SIZE];
+        // collect the slice of Pieces using the selector
+        //      Either corners or edges
+        let pieces: &[Piece] = (self.selector)(cube);
 
-    f.read_exact(&mut pdb)?;
+        let index: usize = encode_pieces(pieces, self.orientation_base, self.range.clone());
 
-    Ok(pdb)
+        self.data[index] as i32
+    }
+
+    pub fn new<'b>(
+        in_data: &'b [u8],
+        in_range: std::ops::Range<usize>,
+        in_selector: fn(&Cube) -> &[Piece],
+        in_base: usize,
+    ) -> PDB<'b> {
+        PDB {
+            data: in_data,
+            range: in_range,
+            selector: in_selector,
+            orientation_base: in_base,
+        }
+    }
+}
+
+// Gets the largest heuristic from a slice of PDBs for a given state
+pub fn get_max_heuristic(cube: &Cube, pdbs: &[PDB]) -> i32 {
+    pdbs.iter()
+        .map(|pdb| pdb.get_heuristic(cube))
+        .max()
+        .expect("Unable to retreave heuristic")
+}
+
+fn factorial_recursive(number: usize) -> usize {
+    // Base Case
+    if number <= 1 {
+        return 1;
+    }
+
+    // Recursive Case
+    return number * factorial_recursive(number - 1);
 }
 
 pub const ALL_MOVES: [Move; 18] = [
@@ -251,3 +218,98 @@ pub const ALL_MOVES: [Move; 18] = [
         coeff: 2,
     },
 ];
+
+/*
+// decode the orientaions from the code
+fn rev_corner_orientations(mut code: usize) -> [u8; 8] {
+    let mut orientations: [u8; 8] = [0; 8];
+
+    for i in (0..7).rev() {
+        orientations[i] = (code % 3) as u8;
+        code /= 3;
+    }
+
+    // Solve for the last orientation
+    // For any valid position, the following equality is true
+    //      0 = orientation_sum % 3
+    //  Where orientation_sum is the sum of the orientations of the pieces
+
+    let sum: u8 = orientations.iter().copied().sum();
+    orientations[7] = (3 - (sum % 3)) % 3;
+
+    orientations
+}
+
+// decode the positions from the code
+fn rev_corner_lehmer(mut code: usize) -> [u8; 8] {
+    let mut positions: [u8; 8] = [0; 8];
+
+    // the lehmer number for the 8th piece is always 0
+    for i in (0..7).rev() {
+        let num_smaller = (code % (8 - i)) as u8;
+
+        for j in &mut positions[i + 1..] {
+            if *j >= num_smaller {
+                *j += 1;
+            }
+        }
+
+        positions[i] = num_smaller;
+
+        code = code / (8 - i);
+    }
+
+    positions
+}
+
+fn decode_corners(index: usize) -> [Piece; 8] {
+    // split code
+    let orient_code = index % 2187;
+    let perm_code = index / 2187; // this truncates the orient_code part off
+
+    // decode everything
+    let orientations: [u8; 8] = rev_corner_orientations(orient_code);
+    let positions: [u8; 8] = rev_corner_lehmer(perm_code);
+
+    // Complete the pieces
+    let mut pieces: [Piece; 8] = [Piece { pos: 0, ori: 0 }; 8];
+
+    for i in 0..8 {
+        pieces[i].ori = orientations[i] as i32;
+        pieces[i].pos = positions[i] as i32;
+    }
+
+    pieces
+}
+
+pub fn test_encode_decode(test_len: i32) -> bool {
+    let mut rng = rand::rng();
+
+    let mut cube: Cube = Cube::new();
+
+    for _ in 0..test_len {
+        let mv = ALL_MOVES[rng.random_range(0..18)];
+        cube.make_move(mv);
+
+        let code = encode_corners(&cube.corners);
+
+        let decoded_corners = decode_corners(code);
+
+        if are_equal_corners(cube.corners, decoded_corners) == false {
+            return false;
+        }
+    }
+
+    true
+}
+
+fn are_equal_corners(c1: [Piece; 8], c2: [Piece; 8]) -> bool {
+    for i in 0..8 {
+        if c1[i].pos != c2[i].pos || c1[i].ori != c2[i].ori {
+            return false;
+        }
+    }
+
+    true
+}
+*/

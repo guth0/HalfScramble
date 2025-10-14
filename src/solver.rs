@@ -1,8 +1,8 @@
-use crate::pdb::encode_corners;
+use crate::pdb::{PDB, get_max_heuristic};
 
-use crate::cube::{Cube, Face, Piece, Move};
+use crate::cube::{Cube, Face, Move};
 
-pub fn solve(cube: &Cube, last_move_inv: Move, pdb: &[u8], scramble_len: i32) -> Option<Vec<Move>> {
+pub fn solve(cube: &Cube, last_move_inv: Move, pdb: &[PDB; 3], scramble_len: i32) -> Option<Vec<Move>> {
     let mut threshold = heuristic(cube, pdb).max(scramble_len);
 
     println!("Heuristic = {}", heuristic(&cube, pdb));
@@ -39,10 +39,10 @@ fn search(
     threshold: i32,
     path: &mut Vec<Move>,
     last_move_inv: &Move,
-    pdb: &[u8],
+    pdbs: &[PDB],
     scramble_len: i32,
 ) -> i32 {
-    let h = heuristic(&node, pdb);
+    let h = heuristic(&node, pdbs);
 
     // Total estimated cost (guaranteed not be less than scramble length)
     let f = (g + h).max(scramble_len);
@@ -91,7 +91,7 @@ fn search(
                 threshold,
                 path,
                 last_move_inv,
-                pdb,
+                pdbs,
                 scramble_len,
             );
 
@@ -113,12 +113,12 @@ fn search(
     min_cost
 }
 
-fn heuristic(cube: &Cube, pdb: &[u8]) -> i32 {
-    (pdb[encode_corners(&cube.corners)] as i32).max(computational_heuristic(cube))
+fn heuristic(cube: &Cube, pdbs: &[PDB]) -> i32 {
+    get_max_heuristic(cube, pdbs)
 }
 
 // very basic heuristic
-
+/*
 fn computational_heuristic(cube: &Cube) -> i32 {
     let mut misplaced: i32 = 0;
     // count misplaced corners
@@ -137,4 +137,5 @@ fn computational_heuristic(cube: &Cube) -> i32 {
 
     misplaced / 4
 }
+*/
 
