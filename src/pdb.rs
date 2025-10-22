@@ -8,16 +8,13 @@ use std::path::Path;
 
 pub fn load_pdb<P: AsRef<Path>>(
     path: P,
-    orientation_base: i32,
+    orientation_base: usize,
     num_pieces: usize,
 ) -> io::Result<Vec<u8>> {
     let mut f = File::open(path)?;
 
-    let mut pdb = vec![
-        0u8;
-        factorial_recursive(num_pieces)
-            * orientation_base.pow((num_pieces - 1) as u32) as usize
-    ];
+    let mut pdb =
+        vec![0u8; factorial_recursive(num_pieces) * orientation_base.pow((num_pieces - 1) as u32)];
 
     f.read_exact(&mut pdb)?;
 
@@ -92,16 +89,15 @@ fn encode_pieces(
     perm_code * orientation_base.pow(7) + orient_code
 }
 
-pub struct PDB<'a> {
-    data: &'a [u8],
+pub struct PDB {
+    data: Box<[u8]>,
     range: std::ops::Range<usize>,
     selector: fn(&Cube) -> &[Piece],
     orientation_base: usize,
 }
 
-impl<'a> PDB<'a> {
+impl PDB {
     pub fn get_heuristic(&self, cube: &Cube) -> i32 {
-
         // collect the slice of Pieces using the selector
         //      Either corners or edges
         let pieces: &[Piece] = (self.selector)(cube);
@@ -111,18 +107,20 @@ impl<'a> PDB<'a> {
         self.data[index] as i32
     }
 
-    pub fn new<'b>(
-        in_data: &'b [u8],
+    pub fn new<P: AsRef<Path>>(
+        in_path: P,
         in_range: std::ops::Range<usize>,
         in_selector: fn(&Cube) -> &[Piece],
         in_base: usize,
-    ) -> PDB<'b> {
-        PDB {
-            data: in_data,
+    ) -> io::Result<PDB> {
+        let pdb = PDB {
+            data: load_pdb(in_path, in_base, in_range.end - in_range.start)?.into_boxed_slice(),
             range: in_range,
             selector: in_selector,
             orientation_base: in_base,
-        }
+        };
+
+        Ok(pdb)
     }
 }
 

@@ -1,5 +1,5 @@
 use HalfScramble::cube::{Cube, Move};
-use HalfScramble::pdb::{load_pdb, PDB};
+use HalfScramble::pdb::PDB;
 use HalfScramble::scramble::{generate_scramble, invert_move, invert_path, print_path};
 use HalfScramble::solver::solve;
 
@@ -14,26 +14,18 @@ fn main() {
     let edge1_pdb_path = "data/edge_pdb_1.bin";
     let edge2_pdb_path = "data/edge_pdb_2.bin";
 
-    let corner_pdb = load_pdb(corner_pdb_path, 3, 8).expect("Error: Could not load corner PDB, please verify \
-        the pdb is at 'data/corner_pdb.bin' or rebuild it with `cargo run --release --bin build_pdb 1`");
+    let pdb_array: [PDB; 3] = [
+        PDB::new(corner_pdb_path, 0..8, |c| &c.corners, 3).expect("Error: Could not load corner PDB, please \
+        verify the pdb is at 'data/corner_pdb.bin' or rebuild it with `cargo run --release --bin build_pdb 1`"),
+        PDB::new(edge1_pdb_path, 0..8, |c| &c.edges, 2).expect("Error: Could not load edge PDB #1, please \
+        verify the pdb is at 'data/edge_pdb_1.bin' or rebuild it with `cargo run --release --bin build_pdb 2`"),
+        PDB::new(edge2_pdb_path, 4..12, |c| &c.edges, 2).expect("Error: Could not load edge PDB #2, please \
+        verify the pdb is at 'data/edge_pdb_2.bin' or rebuild it with `cargo run --release --bin build_pdb 3`"),
+    ];
 
     println!("Loaded corner PDB from {}", corner_pdb_path);
-
-    let edge1_pdb = load_pdb(edge1_pdb_path, 2, 8).expect("Error: Could not load edge PDB #1, please verify \
-        the pdb is at 'data/edge_pdb_1.bin' or rebuild it with `cargo run --release --bin build_pdb 2`");
-
     println!("Loaded edge PDB #1 from {}", edge1_pdb_path);
-
-    let edge2_pdb = load_pdb(edge2_pdb_path, 2, 8).expect("Error: Could not load edge PDB #2, please verify \
-        the pdb is at 'data/edge_pdb_2.bin' or rebuild it with `cargo run --release --bin build_pdb 3`");
-
     println!("Loaded edge PDB #2 from {}", edge2_pdb_path);
-
-    let pdb_array: [PDB; 3] = [
-        PDB::new(&corner_pdb, 0..8, |c| &c.corners, 3),
-        PDB::new(&edge1_pdb, 0..8, |c| &c.edges, 2),
-        PDB::new(&edge2_pdb, 4..12, |c| &c.edges, 2),
-    ];
 
     let mut cube = Cube::new();
 
