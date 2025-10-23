@@ -1,12 +1,21 @@
-use crate::pdb::{PDB, get_max_heuristic};
+use crate::pdb::{get_max_heuristic, PDB};
 
 use crate::cube::{Cube, Face, Move};
 
-pub fn solve(cube: &Cube, last_move_inv: Move, pdb: &[PDB; 3], scramble_len: i32) -> Option<Vec<Move>> {
+// Finds a different path to the solved cube from the scrambled state
+pub fn solve(
+    cube: &Cube,
+    last_move_inv: Move,
+    pdb: &[PDB; 3],
+    scramble_len: i32,
+) -> Option<Vec<Move>> {
+    // The threshold is the minimum number of moves a solution will take (estimate)
+    //  all paths with an expected path shorter than this are discarded
     let mut threshold = heuristic(cube, pdb).max(scramble_len);
 
     println!("Heuristic = {}", heuristic(&cube, pdb));
 
+    // Start the recursion
     let mut path: Vec<Move> = Vec::new();
     loop {
         let t = search(
@@ -18,12 +27,16 @@ pub fn solve(cube: &Cube, last_move_inv: Move, pdb: &[PDB; 3], scramble_len: i32
             pdb,
             scramble_len,
         );
+
+        // if t = -1, path was found, if t = i32::MAX, there is no solution
         if t == -1 {
             return Some(path);
         }
         if t == i32::MAX {
             return None;
         }
+
+        // increase threshold to t if path is not found
         threshold = t;
         println!("Threshold: {}", threshold);
     }
@@ -33,6 +46,7 @@ const FACES: [Face; 6] = [Face::U, Face::R, Face::F, Face::L, Face::B, Face::D];
 
 pub const OPPOSITE_FACES: [Face; 6] = [Face::D, Face::L, Face::B, Face::R, Face::F, Face::U];
 
+// helper function for the solver (IDA*)
 fn search(
     node: &Cube,
     g: i32,
@@ -42,6 +56,7 @@ fn search(
     pdbs: &[PDB],
     scramble_len: i32,
 ) -> i32 {
+    // calculate the heuristic using the PDBs
     let h = heuristic(&node, pdbs);
 
     // Total estimated cost (guaranteed not be less than scramble length)
@@ -57,6 +72,7 @@ fn search(
         return -1;
     }
 
+    // initalize the min cost as "infinity"
     let mut min_cost: i32 = i32::MAX;
 
     // Check all moves
@@ -113,6 +129,7 @@ fn search(
     min_cost
 }
 
+// calculate the heurstic
 fn heuristic(cube: &Cube, pdbs: &[PDB]) -> i32 {
     get_max_heuristic(cube, pdbs)
 }
@@ -138,4 +155,3 @@ fn computational_heuristic(cube: &Cube) -> i32 {
     misplaced / 4
 }
 */
-

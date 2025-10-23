@@ -38,9 +38,23 @@ pub struct Move {
     pub coeff: i8,
 }
 
-// could combine these into a single table
+#[derive(Clone, Copy, Debug)]
+pub struct Piece {
+    pub pos: i32,
+    pub ori: i32,
+    // Edges will have 12 possible positions and 2 possible orientations  (Total : 2*12=24)
+    // Corners will have 8 possible positions and 3 possible orientations (Total : 3*8=24)
+}
+
+#[derive(Clone, Copy)]
+pub struct Cube {
+    // 2 arrays of pieces
+    pub corners: [Piece; 8],
+    pub edges: [Piece; 12],
+}
+
 // These are the cycles of positions that each move causes
-// These are in the same order as the Face enum
+// They are in the same order as the Face enum
 const CORNER_MOVE_TABLE: [[u8; 4]; 6] = [
     [1, 5, 4, 0],
     [0, 4, 7, 3],
@@ -58,49 +72,6 @@ const EDGE_MOVE_TABLE: [[u8; 4]; 6] = [
     [2, 6, 10, 5],
     [8, 9, 10, 11],
 ];
-
-// all entries NEED to be in the same direction (Clockwise in this case)
-const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
-    // The tuples are (Face, row, column)
-    [(Face::U, 2, 2), (Face::R, 0, 0), (Face::F, 0, 2)],
-    [(Face::U, 2, 0), (Face::F, 0, 0), (Face::L, 0, 2)],
-    [(Face::D, 0, 0), (Face::L, 2, 2), (Face::F, 2, 0)],
-    [(Face::D, 0, 2), (Face::F, 2, 2), (Face::R, 2, 0)],
-    [(Face::U, 0, 2), (Face::B, 0, 0), (Face::R, 0, 2)],
-    [(Face::U, 0, 0), (Face::L, 0, 0), (Face::B, 0, 2)],
-    [(Face::D, 2, 0), (Face::B, 2, 2), (Face::L, 2, 0)],
-    [(Face::D, 2, 2), (Face::R, 2, 2), (Face::B, 2, 0)],
-];
-
-const EDGE_TABLE: [[(Face, u8, u8); 2]; 12] = [
-    [(Face::U, 2, 1), (Face::F, 0, 1)],
-    [(Face::U, 1, 2), (Face::R, 0, 1)],
-    [(Face::U, 0, 1), (Face::B, 0, 1)],
-    [(Face::U, 1, 0), (Face::L, 0, 1)],
-    [(Face::F, 1, 2), (Face::R, 1, 0)],
-    [(Face::B, 1, 0), (Face::R, 1, 2)],
-    [(Face::B, 1, 2), (Face::L, 1, 0)],
-    [(Face::F, 1, 0), (Face::L, 1, 2)],
-    [(Face::D, 0, 1), (Face::F, 2, 1)],
-    [(Face::D, 1, 2), (Face::R, 2, 1)],
-    [(Face::D, 2, 1), (Face::B, 2, 1)],
-    [(Face::D, 1, 0), (Face::L, 2, 1)],
-];
-
-#[derive(Clone, Copy, Debug)]
-pub struct Piece {
-    pub pos: i32,
-    pub ori: i32,
-    // Edges will have 12 possible positions and 2 possible orientations  (Total : 2*12=24)
-    // Corners will have 8 possible positions and 3 possible orientations (Total : 3*8=24)
-}
-
-#[derive(Clone, Copy)]
-pub struct Cube {
-    // 2 arrays of pieces
-    pub corners: [Piece; 8],
-    pub edges: [Piece; 12],
-}
 
 impl Cube {
     pub fn new() -> Self {
@@ -235,6 +206,7 @@ fn cycle_pieces<const N: usize>(pieces: &mut [Piece; N], pos_cycle: &[u8; 4]) ->
     return piece_cycle;
 }
 
+// Calculate how much to rotate by
 fn get_rotation(coeff: i8, i: usize) -> i32 {
     if coeff == -1 {
         2 - (i as i32 % 2)
@@ -245,10 +217,42 @@ fn get_rotation(coeff: i8, i: usize) -> i32 {
     }
 }
 
+// vvv Printing and Diagnostics vvv
+
+// These are for printint out the cube
+// all entries NEED to be in the same direction (Clockwise in this case)
+const CORNER_TABLE: [[(Face, u8, u8); 3]; 8] = [
+    // The tuples are (Face, row, column)
+    [(Face::U, 2, 2), (Face::R, 0, 0), (Face::F, 0, 2)],
+    [(Face::U, 2, 0), (Face::F, 0, 0), (Face::L, 0, 2)],
+    [(Face::D, 0, 0), (Face::L, 2, 2), (Face::F, 2, 0)],
+    [(Face::D, 0, 2), (Face::F, 2, 2), (Face::R, 2, 0)],
+    [(Face::U, 0, 2), (Face::B, 0, 0), (Face::R, 0, 2)],
+    [(Face::U, 0, 0), (Face::L, 0, 0), (Face::B, 0, 2)],
+    [(Face::D, 2, 0), (Face::B, 2, 2), (Face::L, 2, 0)],
+    [(Face::D, 2, 2), (Face::R, 2, 2), (Face::B, 2, 0)],
+];
+
+const EDGE_TABLE: [[(Face, u8, u8); 2]; 12] = [
+    [(Face::U, 2, 1), (Face::F, 0, 1)],
+    [(Face::U, 1, 2), (Face::R, 0, 1)],
+    [(Face::U, 0, 1), (Face::B, 0, 1)],
+    [(Face::U, 1, 0), (Face::L, 0, 1)],
+    [(Face::F, 1, 2), (Face::R, 1, 0)],
+    [(Face::B, 1, 0), (Face::R, 1, 2)],
+    [(Face::B, 1, 2), (Face::L, 1, 0)],
+    [(Face::F, 1, 0), (Face::L, 1, 2)],
+    [(Face::D, 0, 1), (Face::F, 2, 1)],
+    [(Face::D, 1, 2), (Face::R, 2, 1)],
+    [(Face::D, 2, 1), (Face::B, 2, 1)],
+    [(Face::D, 1, 0), (Face::L, 2, 1)],
+];
+
 // This is an array of 6 3x3 faces
 // 0=U, 1=R, 2=F, 3=D, 4=L, 5=B
 type CubeState = [[[char; 3]; 3]; 6];
 
+// fill in the CubeState for printing
 fn fill_state(cube: &Cube) -> CubeState {
     let mut state: CubeState = [[[' '; 3]; 3]; 6];
 

@@ -6,33 +6,24 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
-pub fn load_pdb<P: AsRef<Path>>(
-    path: P,
-    orientation_base: usize,
-    num_pieces: usize,
-) -> io::Result<Vec<u8>> {
-    let mut f = File::open(path)?;
-
-    let mut pdb =
-        vec![0u8; factorial_recursive(num_pieces) * orientation_base.pow((num_pieces - 1) as u32)];
-
-    f.read_exact(&mut pdb)?;
-
-    Ok(pdb)
-}
-
+// Compute the actual PDB and return it as a Vec<u8> to be saved
+//  piece_range: to select which piecies in the piece array to use for the PDB
+//  selector: to select between edge and corner PDBs
+//  orientation_base: (the # of possible orientation states a piece can be in)
+//      to calcualte the state code
 pub fn build_pdb(
     piece_range: std::ops::Range<usize>,
     selector: fn(&Cube) -> &[Piece],
     orientation_base: usize,
 ) -> Vec<u8> {
+    // calculate the total size of the PDB
     let num_pieces = piece_range.end - piece_range.start;
-
     let size = factorial_recursive(num_pieces) * orientation_base.pow(7);
 
     // set default to max to more easily identify missed indices
     let mut pdb = vec![u8::MAX; size];
 
+    // start with solved cube
     let solved = Cube::new();
     let start_index = encode_pieces(selector(&solved), orientation_base, piece_range.clone());
     pdb[start_index] = 0;
@@ -48,6 +39,8 @@ pub fn build_pdb(
         for mv in ALL_MOVES {
             let mut new_node = node.clone();
             new_node.make_move(mv);
+
+            // get the index of the new node
             let index = encode_pieces(selector(&new_node), orientation_base, piece_range.clone());
 
             // if index is untouched, change it and add the node to the queue
@@ -61,6 +54,10 @@ pub fn build_pdb(
     pdb
 }
 
+// Encode a state into an index to be used in the PDB
+//  pieces: the state of which to be encoded (could be corners or edges)
+//  orientation_base: the # of possible orientations a piece can be in
+//  range: which pieces in the array to encode
 fn encode_pieces(
     pieces: &[Piece],
     orientation_base: usize,
@@ -86,6 +83,7 @@ fn encode_pieces(
         perm_code = perm_code * (num_pieces - i) + num_smaller;
     }
 
+    // combine permutation and orientation codes for final code
     perm_code * orientation_base.pow(7) + orient_code
 }
 
@@ -97,6 +95,7 @@ pub struct PDB {
 }
 
 impl PDB {
+    // Get the heuristic value for a certain cube state
     pub fn get_heuristic(&self, cube: &Cube) -> i32 {
         // collect the slice of Pieces using the selector
         //      Either corners or edges
@@ -107,6 +106,7 @@ impl PDB {
         self.data[index] as i32
     }
 
+    // Initialize a new PDB
     pub fn new<P: AsRef<Path>>(
         in_path: P,
         in_range: std::ops::Range<usize>,
@@ -132,6 +132,23 @@ pub fn get_max_heuristic(cube: &Cube, pdbs: &[PDB]) -> i32 {
         .expect("Unable to retreave heuristic")
 }
 
+// Load PDB from a given path
+fn load_pdb<P: AsRef<Path>>(
+    path: P,
+    orientation_base: usize,
+    num_pieces: usize,
+) -> io::Result<Vec<u8>> {
+    let mut f = File::open(path)?;
+
+    let mut pdb =
+        vec![0u8; factorial_recursive(num_pieces) * orientation_base.pow((num_pieces - 1) as u32)];
+
+    f.read_exact(&mut pdb)?;
+
+    Ok(pdb)
+}
+
+// returns (number!)
 fn factorial_recursive(number: usize) -> usize {
     // Base Case
     if number <= 1 {
@@ -142,6 +159,7 @@ fn factorial_recursive(number: usize) -> usize {
     return number * factorial_recursive(number - 1);
 }
 
+// array of all possible moves
 pub const ALL_MOVES: [Move; 18] = [
     Move {
         face: Face::U,

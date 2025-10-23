@@ -6,10 +6,11 @@ use HalfScramble::solver::solve;
 use std::env;
 
 fn main() {
+    // get length of scrable
     let args: Vec<String> = env::args().collect();
-
     let scramble_len: i32 = args[1].trim().parse().expect("Not a number");
 
+    // load PDBS into array
     let corner_pdb_path = "data/corner_pdb.bin";
     let edge1_pdb_path = "data/edge_pdb_1.bin";
     let edge2_pdb_path = "data/edge_pdb_2.bin";
@@ -27,20 +28,26 @@ fn main() {
     println!("Loaded edge PDB #1 from {}", edge1_pdb_path);
     println!("Loaded edge PDB #2 from {}", edge2_pdb_path);
 
+    // create new cube and scramble
     let mut cube = Cube::new();
-
     let scramble = generate_scramble(scramble_len);
 
     // This is to prevent the solution from being the inverse of the scramble
+    //      has to be computed before the cube is actualy scrambled because of consumption
     let last_move_inv: Move = invert_move(scramble[(scramble_len - 1) as usize]);
 
+    // scramble the cube
     for mv in scramble.iter() {
         cube.make_move(*mv);
     }
 
+    // solve for the alternate path
     let path = solve(&cube, last_move_inv, &pdb_array, scramble_len).expect("No path found :(");
 
+    // the inverse of the solution/path will be the scramble
     let long_scramble = invert_path(&path);
+
+    // the inverse of the scramble will be the solution
     let solution = invert_path(&scramble);
 
     print!("Scramble: ");

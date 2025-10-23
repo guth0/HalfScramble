@@ -4,12 +4,14 @@ use crate::cube::{Face, Move};
 use crate::pdb::ALL_MOVES;
 use crate::solver::OPPOSITE_FACES;
 
+// generates a random scramble of length = len
 pub fn generate_scramble(len: i32) -> Vec<Move> {
     let mut rng = rand::rng();
 
     let mut scramble: Vec<Move> = Vec::new();
 
     for i in 0..len {
+        // slect a random move from ALL_MOVES
         let mut mv = ALL_MOVES[rng.random_range(0..18)];
 
         // shitty if statement to make sure moves are not reversing themselves
@@ -27,6 +29,10 @@ pub fn generate_scramble(len: i32) -> Vec<Move> {
     scramble
 }
 
+// returns the inverse of a given move
+//  invert_move( U ) = U'
+//  invert_move( F' ) = F
+//  invert_move( 2D ) = 2D
 pub fn invert_move(mv: Move) -> Move {
     Move {
         face: mv.face,
@@ -34,6 +40,8 @@ pub fn invert_move(mv: Move) -> Move {
     }
 }
 
+// Takes a path P and returns an inverted path P'
+//  such that if you apply P and P' to a cube, it will return to its origional state
 pub fn invert_path(path: &[Move]) -> Vec<Move> {
     let mut reversed_path: Vec<Move> = Vec::new();
 
