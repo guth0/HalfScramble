@@ -67,11 +67,16 @@ fn main() {
         print!("Scramble: ");
         print_path(&long_scramble);
 
+        print!("Press ENTER to see solution");
+        io::stdout().flush().unwrap();
+        let _ = io::stdin().read_line(&mut String::new());
+        println!();
+
         print!("Solution: ");
         print_path(&solution);
 
         input.clear();
-        print!("\nEnter scramble length (leave empty to quit): ");
+        print!("\n--------------------\nEnter scramble length (leave empty to quit): ");
         io::stdout().flush().unwrap();
 
         io::stdin()
