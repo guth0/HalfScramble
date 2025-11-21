@@ -13,7 +13,7 @@ pub fn solve(
     //  all paths with an expected path shorter than this are discarded
     let mut threshold = heuristic(cube, pdb).max(scramble_len);
 
-    println!("Heuristic = {}", heuristic(&cube, pdb));
+    // println!("Heuristic = {}", heuristic(&cube, pdb));
 
     // Start the recursion
     let mut path: Vec<Move> = Vec::new();
@@ -38,7 +38,7 @@ pub fn solve(
 
         // increase threshold to t if path is not found
         threshold = t;
-        println!("Threshold: {}", threshold);
+        // println!("Threshold: {}", threshold);
     }
 }
 
