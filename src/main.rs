@@ -6,11 +6,33 @@ use HalfScramble::solver::solve;
 
 use std::env;
 
-fn main() {
-    // get length of scrable
-    let args: Vec<String> = env::args().collect();
-    //let scramble_len: i32 = args[1].trim().parse().expect("Not a number");
+fn generate_paths(scramble_len: i32, pdb_array: &[PDB; 3]) -> (Vec<Move>, Vec<Move>) {
+    // create new cube and scramble
+    let mut cube = Cube::new();
+    let scramble = generate_scramble(scramble_len);
 
+    // This is to prevent the solution from being the inverse of the scramble
+    //      has to be computed before the cube is actualy scrambled because of consumption
+    let last_move_inv: Move = invert_move(scramble[(scramble_len - 1) as usize]);
+
+    // scramble the cube
+    for mv in scramble.iter() {
+        cube.make_move(*mv);
+    }
+
+    // solve for the alternate path
+    let path = solve(&cube, last_move_inv, &pdb_array, scramble_len).expect("No path found :(");
+
+    // the inverse of the solution/path will be the scramble
+    let long_scramble = invert_path(&path);
+
+    // the inverse of the scramble will be the solution
+    let solution = invert_path(&scramble);
+
+    return (long_scramble, solution);
+}
+
+fn main() {
     // load PDBS into array
     let corner_pdb_path = "data/corner_pdb.bin";
     let edge1_pdb_path = "data/edge_pdb_1.bin";
@@ -29,6 +51,25 @@ fn main() {
     println!("Loaded edge PDB #1 from {}", edge1_pdb_path);
     println!("Loaded edge PDB #2 from {}", edge2_pdb_path);
 
+    // parse arguments
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 0 {
+        let scramble_len: i32 = args[1].parse().expect("Not a number");
+
+        let (scramble, solution) = generate_paths(scramble_len, &pdb_array);
+
+        print!("Scramble: ");
+        print_path(&scramble);
+
+        print!("Press ENTER to see solution");
+        io::stdout().flush().unwrap();
+        let _ = io::stdin().read_line(&mut String::new());
+        println!();
+
+        print!("Solution: ");
+        print_path(&solution);
+    }
+
     let mut input = String::new();
 
     print!("Enter scramble length: ");
@@ -42,30 +83,10 @@ fn main() {
     while input != "\n" {
         let scramble_len: i32 = input.trim().parse::<i32>().expect("Not a number");
 
-        // create new cube and scramble
-        let mut cube = Cube::new();
-        let scramble = generate_scramble(scramble_len);
-
-        // This is to prevent the solution from being the inverse of the scramble
-        //      has to be computed before the cube is actualy scrambled because of consumption
-        let last_move_inv: Move = invert_move(scramble[(scramble_len - 1) as usize]);
-
-        // scramble the cube
-        for mv in scramble.iter() {
-            cube.make_move(*mv);
-        }
-
-        // solve for the alternate path
-        let path = solve(&cube, last_move_inv, &pdb_array, scramble_len).expect("No path found :(");
-
-        // the inverse of the solution/path will be the scramble
-        let long_scramble = invert_path(&path);
-
-        // the inverse of the scramble will be the solution
-        let solution = invert_path(&scramble);
+        let (scramble, solution) = generate_paths(scramble_len, &pdb_array);
 
         print!("Scramble: ");
-        print_path(&long_scramble);
+        print_path(&scramble);
 
         print!("Press ENTER to see solution");
         io::stdout().flush().unwrap();

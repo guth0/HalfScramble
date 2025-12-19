@@ -32,6 +32,35 @@ pub enum Face {
     D,
 }
 
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum FacePair {
+    X,
+    Y,
+    Z,
+}
+
+pub fn face_to_face_pair(f: Face) -> FacePair {
+    match f {
+        Face::R | Face::L => FacePair::X,
+        Face::U | Face::D => FacePair::Y,
+        Face::F | Face::B => FacePair::Z,
+    }
+}
+
+pub fn face_pair_to_faces(fp: FacePair) -> (Face, Face) {
+    match fp {
+        FacePair::X => (Face::R, Face::L),
+        FacePair::Y => (Face::U, Face::D),
+        FacePair::Z => (Face::F, Face::B),
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Operation {
+    pub face_pair: FacePair,
+    pub coeffs: (u8, u8),
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Move {
     pub face: Face,
@@ -215,6 +244,54 @@ fn get_rotation(coeff: i8, i: usize) -> i32 {
     } else {
         panic!("Invalid rotation coefficent: {}", coeff);
     }
+}
+
+// Expand a path to only use base moves (coeff = 1)
+
+fn translate_path(path: Vec<Move>) -> Vec<Operation> {
+    let mut new_vec: Vec<Operation> = Vec::new();
+
+    for mv in path {
+        // find the translated coefficent from the origional
+        let new_coeff: u8 = match mv.coeff {
+            1 => 1,
+            2 => 2,
+            -1 => 3,
+            _ => unreachable!("Invalid move coefficent"), 
+        };
+
+        let fp: FacePair = face_to_face_pair(mv.face);
+
+        // Check if this can be combined into the previous operation
+        if new_vec.len() == 0 || fp != new_vec[new_vec.len() - 1].face_pair {
+            // create a new (FacePair, coeffs) tuple and add to end of vec
+            let new_operation: Operation = Operation {
+                face_pair: fp,
+                coeffs: (0, 0),
+            };
+            new_vec.push(new_operation);
+        }
+
+        // the target is Operation that we need to modify to add the current move
+        let target: &mut Operation = new_vec
+            .last_mut()
+            .expect("This vector should never be empty");
+
+        // get which coeffs corespond to each face
+        let faces: (Face, Face) = face_pair_to_faces(target.face_pair);
+
+        // find which coeff matches the move's face 
+        let coeff_ref: &mut u8 = if mv.face == faces.0 {
+            &mut target.coeffs .0
+        } else {
+            &mut target.coeffs .1
+        };
+
+        // apply the move
+        *coeff_ref = (*coeff_ref + new_coeff) % 4
+    }
+
+    new_vec
 }
 
 // vvv Printing and Diagnostics vvv

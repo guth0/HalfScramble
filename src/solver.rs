@@ -11,7 +11,7 @@ pub fn solve(
 ) -> Option<Vec<Move>> {
     // The threshold is the minimum number of moves a solution will take (estimate)
     //  all paths with an expected path shorter than this are discarded
-    let mut threshold = heuristic(cube, pdb).max(scramble_len);
+    let mut threshold = heuristic(cube, pdb);
 
     // println!("Heuristic = {}", heuristic(&cube, pdb));
 
@@ -60,7 +60,7 @@ fn search(
     let h = heuristic(&node, pdbs);
 
     // Total estimated cost (guaranteed not be less than scramble length)
-    let f = (g + h).max(scramble_len);
+    let f = g + h;
 
     // If the estimate exceeds the threshold then prune
     if f > threshold {
@@ -77,11 +77,17 @@ fn search(
 
     // Check all moves
     for &face in FACES.iter() {
+
         // Prevent redundant moves
-        if let Some(prev) = path.last() {
-            if face == prev.face || face == OPPOSITE_FACES[prev.face as usize] {
-                continue;
-            }
+        let prev_face: Face = path[(g - 1) as usize].face;
+
+        if g > 1 && face == prev_face {
+            continue;
+        } else if g > 2
+            && face == OPPOSITE_FACES[prev_face as usize]
+            && face == path[(g - 2) as usize].face
+        {
+            continue;
         }
 
         // Iterate over coefficients (-1 = CW, 1 = CCW, 2 = Double Turn)
