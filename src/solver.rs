@@ -1,45 +1,68 @@
-use crate::pdb::{get_max_heuristic, PDB};
-
 use crate::cube::{Cube, Face, Move};
+use crate::data::ScrambleRecord;
+use crate::pdb::ALL_MOVES;
+use crate::scramble::invert_move;
 
-// Finds a different path to the solved cube from the scrambled state
-pub fn solve(
+fn analyze_scramble(
+    mut record: ScrambleRecord,
     cube: &Cube,
-    last_move_inv: Move,
-    pdb: &[PDB; 3],
-    scramble_len: i32,
-) -> Option<Vec<Move>> {
-    // The threshold is the minimum number of moves a solution will take (estimate)
-    //  all paths with an expected path shorter than this are discarded
-    let mut threshold = heuristic(cube, pdb).max(scramble_len);
+    records_vec: &mut Vec<ScrambleRecord>,
+) {
+    solve(cube, &mut record);
+    records_vec.push(record)
+}
 
-    // println!("Heuristic = {}", heuristic(&cube, pdb));
-
-    // Start the recursion
-    let mut path: Vec<Move> = Vec::new();
-    loop {
-        let t = search(
-            &cube,
-            0,
-            threshold,
-            &mut path,
-            &last_move_inv,
-            pdb,
-            scramble_len,
-        );
-
-        // if t = -1, path was found, if t = i32::MAX, there is no solution
-        if t == -1 {
-            return Some(path);
-        }
-        if t == i32::MAX {
-            return None;
-        }
-
-        // increase threshold to t if path is not found
-        threshold = t;
-        // println!("Threshold: {}", threshold);
+fn recursive_scramble(
+    record: &mut ScrambleRecord,
+    cube: &mut Cube,
+    stop_depth: u8,
+    records_vec: &mut Vec<ScrambleRecord>,
+) {
+    // Base Case:
+    if record.n == stop_depth {
+        analyze_scramble(record.clone(), cube, records_vec);
+        return;
     }
+
+    // Recursive Case:
+    for mv in ALL_MOVES {
+        // Put move onto scramble
+        record.scramble.push(mv);
+
+        let mut new_cube = cube.clone();
+        new_cube.make_move(mv);
+
+        // Recursive call
+        recursive_scramble(record, &mut new_cube, stop_depth, records_vec);
+
+        // Take the move off the scramble
+        record.scramble.pop();
+    }
+}
+
+// in this modified version, this will solve
+pub fn solve(cube: &Cube, record: &mut ScrambleRecord) {
+    // set the minimum alternate length (threshold) to scramble len to start
+    let mut min_alternate_len = u8::MAX;
+
+    let last_move_inv: Move = invert_move(
+        *record
+            .scramble
+            .last()
+            .expect("Cannot solve a cube that has no scramble in its record"),
+    );
+
+    let previous_face: Option<Face> = None;
+
+    ////////// Add a previous_face: Option<face> to replace path.last() in previous
+    search(
+        &cube,
+        0,
+        previous_face,
+        &mut min_alternate_len,
+        &last_move_inv,
+        record,
+    );
 }
 
 const FACES: [Face; 6] = [Face::U, Face::R, Face::F, Face::L, Face::B, Face::D];
@@ -47,39 +70,53 @@ const FACES: [Face; 6] = [Face::U, Face::R, Face::F, Face::L, Face::B, Face::D];
 pub const OPPOSITE_FACES: [Face; 6] = [Face::D, Face::L, Face::B, Face::R, Face::F, Face::U];
 
 // helper function for the solver (IDA*)
+// REMOVED: "path: &mut Vec<Move>"
+//  we don't need the path for the solution in this case
 fn search(
     node: &Cube,
-    g: i32,
-    threshold: i32,
-    path: &mut Vec<Move>,
+    depth: u8,
+    prev_face: Option<Face>,
+    min_alternate_len: &mut u8,
     last_move_inv: &Move,
-    pdbs: &[PDB],
-    scramble_len: i32,
-) -> i32 {
-    // calculate the heuristic using the PDBs
-    let h = heuristic(&node, pdbs);
+    record: &mut ScrambleRecord,
+) {
+    //// For this modified version, f = depth
+    //// this just means that we are not using heuristics, we covering every state in the tree
+    //let f = depth;
+    //// So, I am just using depth instead for all instances of f
 
-    // Total estimated cost (guaranteed not be less than scramble length)
-    let f = (g + h).max(scramble_len);
-
-    // If the estimate exceeds the threshold then prune
-    if f > threshold {
-        return f;
+    // prune anything above the min_alternate_len
+    if depth > *min_alternate_len {
+        return;
     }
 
-    // If solved, return to top
+    // Increment how many nodes have been expanded
+    record.nodes_expanded += 1;
+
+    // If solved, stop searching this path
     if node.is_solved() {
-        return -1;
-    }
+        // update min_alternate_len if not updated yet
+        if *min_alternate_len != depth {
+            *min_alternate_len = depth;
+            record.min_length = depth;
 
-    // initalize the min cost as "infinity"
-    let mut min_cost: i32 = i32::MAX;
+            // Shouldn't need to do this...
+            if record.count != 0 {
+                panic!("Went too far somehow")
+            }
+        }
+
+        record.count += 1;
+
+        return;
+    }
 
     // Check all moves
     for &face in FACES.iter() {
         // Prevent redundant moves
-        if let Some(prev) = path.last() {
-            if face == prev.face || face == OPPOSITE_FACES[prev.face as usize] {
+        // THIS PREVENTS TOO MANY MOVES
+        if let Some(prev) = prev_face {
+            if face == prev || face == OPPOSITE_FACES[prev as usize] {
                 continue;
             }
         }
@@ -87,7 +124,8 @@ fn search(
         // Iterate over coefficients (-1 = CW, 1 = CCW, 2 = Double Turn)
         for coeff in [-1, 1, 2] {
             // Prevent first move being inverse of scramble
-            if path.is_empty() && face == last_move_inv.face && coeff == last_move_inv.coeff {
+            // checking "prev_face == None" makes sure that there are no moves yet 
+            if prev_face == None && face == last_move_inv.face && coeff == last_move_inv.coeff {
                 continue;
             }
 
@@ -97,61 +135,32 @@ fn search(
             let mut new_node = node.clone();
             new_node.make_move(mv);
 
-            // Push to path
-            path.push(mv);
+            // // Push to path
+            // path.push(mv);
 
             // Recursive search
-            let t = search(
+            //let t =
+            search(
                 &new_node,
-                g + 1,
-                threshold,
-                path,
+                depth + 1,
+                Some(mv.face),
+                min_alternate_len,
                 last_move_inv,
-                pdbs,
-                scramble_len,
+                record,
             );
 
-            // If found, go to top
-            if t == -1 {
-                return -1;
-            }
+            // // If found, go to top
+            // if t == -1 {
+            //     return -1;
+            // }
 
-            // Track minimum cutoff cost
-            if t < min_cost {
-                min_cost = t;
-            }
+            // // Track minimum cutoff cost
+            // if t < min_cost {
+            //     min_cost = t;
+            // }
 
-            // Backtrack
-            path.pop();
+            // // Backtrack
+            // path.pop();
         }
     }
-
-    min_cost
 }
-
-// calculate the heurstic
-fn heuristic(cube: &Cube, pdbs: &[PDB]) -> i32 {
-    get_max_heuristic(cube, pdbs)
-}
-
-// very basic heuristic
-/*
-fn computational_heuristic(cube: &Cube) -> i32 {
-    let mut misplaced: i32 = 0;
-    // count misplaced corners
-    for i in 0..8 {
-        let piece: &Piece = &cube.corners[i];
-        if piece.pos != i as i32 || piece.ori != 0 {
-            misplaced += 1;
-        }
-    }
-    for i in 0..12 {
-        let piece: &Piece = &cube.edges[i];
-        if piece.pos != i as i32 || piece.ori != 0 {
-            misplaced += 1;
-        }
-    }
-
-    misplaced / 4
-}
-*/
