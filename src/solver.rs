@@ -79,8 +79,17 @@ fn search(
     for &face in FACES.iter() {
         // Prevent redundant moves
         if let Some(prev) = path.last() {
-            if face == prev.face || face == OPPOSITE_FACES[prev.face as usize] {
+            // Stop from moving the same face twice
+            if face == prev.face {
                 continue;
+            }
+
+            // Stop from moving the same axis 3 times
+            //  e.g. (F B F)
+            if let Some(prevprev) = path.get(path.len() - 2) {
+                if face == prevprev.face && OPPOSITE_FACES[face as usize] == prev.face {
+                    continue;
+                }
             }
         }
 
