@@ -103,7 +103,7 @@ Trajectory in the Cayley graph of the cube group corresponding to the scramble w
 \end{center}
 \end{figure}
 
-\newpage
+
 
 \section{Solve}
 Next, we compute an alternative solution from \(X\) back to \(e\) using a modified IDA* search. This produces a word
@@ -185,8 +185,6 @@ During the search procedure, we forbid immediate backtracking by disallowing a g
 \end{center}
 \end{figure}
 
-\newpage
-
 \section{Reversal}
 
 For any word
@@ -227,23 +225,25 @@ Figure~\ref{fig:paths3} shows the inverse trajectories corresponding to $w$ and 
 
 
 % edges top
-\draw[arrow] (e) -- node[midway, above] {$a_1$} (a1);
-\draw[arrow] (a1) -- node[midway, above] {$a_2$} (adots);
-\draw[arrow] (adots) -- node[midway, above] {$a_{n-1}$} (a3);
-\draw[arrow] (a3) -- node[midway, above] {$a_n$}  (scr);
+\draw[arrow] (a1) -- node[midway, above] {$a_1^{-1}$} (e);
+\draw[arrow] (adots) -- node[midway, above] {$a_2^{-1}$} (a1);
+\draw[arrow] (a3) -- node[midway, above] {$a_{n-1}^{-1}$} (adots);
+\draw[arrow] (scr) -- node[midway, above] {$a_n^{-1}$}  (a3);
 
 % edges bottom
-\draw[arrow_sol] (scr) -- node[midway, above] {$b_1$} (b1);
-\draw[arrow_sol] (b1) -- node[midway, above] {$b_2$} (bdots);
-\draw[arrow_sol] (bdots) -- node[midway, above] {$b_{n-1}$} (b3);
-\draw[arrow_sol] (b3) -- node[midway, above] {$b_n$} (e);
+\draw[arrow_sol] (b1) -- node[midway, above] {$b_1^{-1}$} (scr);
+\draw[arrow_sol] (bdots) -- node[midway, above] {$b_2^{-1}$} (b1);
+\draw[arrow_sol] (b3) -- node[midway, above] {$b_{n-1}^{-1}$} (bdots);
+\draw[arrow_sol] (e) -- node[midway, above] {$b_n^{-1}$} (b3);
 
 \end{tikzpicture}
 
-\caption{Cayley graph representation of the scramble and solution structure. The forward path $w$ maps $e \to X$, while $v$ maps $X \to e$. The diagram also shows the induced inverse traversals $w^{-1}$ and $v^{-1}$.}
+\caption{Cayley graph representation of the scramble and solution structure. The diagram shows the traversals of the reverse paths $w^{-1}$ which maps $X \to e$ and $v^{-1}$ which maps $e \to X$.}
 \label{fig:paths3}
 \end{center}
 \end{figure}
+
+\newpage
 
 \section{Conclusion}
 
