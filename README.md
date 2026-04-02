@@ -8,7 +8,7 @@ I would ask you for a number N, then I would take a Rubik's cube and make N move
 Then, you would be tasked with solving the cube.
 ***But***, the challenge comes from the fact that you cannot a traditional algorithmic solution, you must try to reverse the N moves that I made on the cube.
 
-Simple enough, right? The problem is, what if you don't have any friends?
+But, what if you don't have any friends?
 The problem with playing this game alone is that by scrambling the cube yourself, you already know the solution. 
 
 While I cannot make a program to generate you friends, I can solve the problem of playing this game alone.
